@@ -64,15 +64,13 @@ const AdminApp: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<AdminApp />} />
-          <Route path="/parent-portal" element={<ParentPortal />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Router>
+      <Routes>
+        <Route path="/" element={<AuthProvider><AdminApp /></AuthProvider>} />
+        <Route path="/parent-portal" element={<ParentPortal />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 
