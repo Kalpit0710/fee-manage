@@ -352,7 +352,7 @@ export const db = {
         *,
         student:students(*),
         quarter:quarters(*),
-        created_by_user:users(name, email)
+        created_by_user:users!created_by(name, email)
       `)
       .order('created_at', { ascending: false });
 
@@ -387,7 +387,7 @@ export const db = {
         *,
         student:students(*),
         quarter:quarters(*),
-        created_by_user:users(name, email)
+        created_by_user:users!created_by(name, email)
       `)
       .eq('id', id)
       .single();
