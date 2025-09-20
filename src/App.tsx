@@ -8,6 +8,9 @@ import { StudentManagement } from './components/StudentManagement';
 import { ClassManagement } from './components/ClassManagement';
 import { QuarterManagement } from './components/QuarterManagement';
 import { FeeCollection } from './components/FeeCollection';
+import { FeeStructureManagement } from './components/FeeStructureManagement';
+import { ExtraChargeManagement } from './components/ExtraChargeManagement';
+import { LateFeeConfiguration } from './components/LateFeeConfiguration';
 import { Reports } from './components/Reports';
 import { ParentPortal } from './components/ParentPortal';
 
@@ -38,7 +41,11 @@ const AdminApp: React.FC = () => {
       case 'quarters':
         return <QuarterManagement />;
       case 'fee-structures':
-        return <div>Fee Structures Management (Coming Soon)</div>;
+        return <FeeStructureManagement />;
+      case 'extra-charges':
+        return <ExtraChargeManagement />;
+      case 'late-fee-config':
+        return <LateFeeConfiguration />;
       case 'fee-collection':
         return <FeeCollection />;
       case 'transactions':

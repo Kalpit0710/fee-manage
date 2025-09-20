@@ -260,7 +260,7 @@ export const db = {
   updateFeeStructure: async (id: string, updates: Partial<any>) => {
     const { data, error } = await supabase
       .from('fee_structures')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq('id', id)
       .select()
       .single();

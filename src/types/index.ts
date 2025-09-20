@@ -31,8 +31,8 @@ export interface Quarter {
   start_date: string;
   end_date: string;
   due_date: string;
-  late_fee_amount: number;
-  late_fee_percentage: number;
+  late_fee_amount?: number;
+  late_fee_percentage?: number;
   is_active: boolean;
   created_at: string;
 }

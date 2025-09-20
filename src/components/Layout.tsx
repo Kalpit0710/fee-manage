@@ -10,7 +10,9 @@ import {
   Calendar,
   Receipt,
   DollarSign,
-  Calculator
+  Calculator,
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -32,6 +34,8 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'classes', label: 'Classes', icon: BookOpen, roles: ['admin'] },
     { id: 'quarters', label: 'Quarters', icon: Calendar, roles: ['admin'] },
     { id: 'fee-structures', label: 'Fee Structures', icon: DollarSign, roles: ['admin'] },
+    { id: 'extra-charges', label: 'Extra Charges', icon: Plus, roles: ['admin'] },
+    { id: 'late-fee-config', label: 'Late Fee Config', icon: AlertTriangle, roles: ['admin'] },
     { id: 'fee-collection', label: 'Fee Collection', icon: Calculator, roles: ['admin', 'cashier'] },
     { id: 'transactions', label: 'Transactions', icon: CreditCard, roles: ['admin', 'cashier'] },
     { id: 'reports', label: 'Reports', icon: Receipt, roles: ['admin', 'cashier'] },
