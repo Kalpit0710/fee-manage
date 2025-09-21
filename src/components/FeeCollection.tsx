@@ -94,6 +94,7 @@ export const FeeCollection: React.FC = () => {
     try {
       const transactionData = {
         ...paymentData,
+        cheque_date: paymentData.cheque_date || null,
         created_by: user?.id
       };
 

@@ -166,7 +166,7 @@ export interface PaymentRequest {
   payment_mode: 'cash' | 'upi' | 'cheque' | 'online';
   payment_reference?: string;
   cheque_number?: string;
-  cheque_date?: string;
+  cheque_date?: string | null;
   bank_name?: string;
   notes?: string;
 }
