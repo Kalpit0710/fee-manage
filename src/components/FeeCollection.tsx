@@ -45,47 +45,90 @@ export const FeeCollection: React.FC = () => {
     setStudentDetails(null);
 
     try {
-      let students;
+      let students = null;
+      const searchValue = searchTerm.trim();
       
       if (searchType === 'admission') {
-        // Direct search by admission number
-        const { data } = await supabase
+        // Try exact match first
+        let { data, error } = await supabase
           .from('students')
           .select(`
             *,
             class:classes(*)
           `)
-          .eq('admission_no', searchTerm.trim())
+          .eq('admission_no', searchValue)
           .eq('is_active', true);
-        students = data;
+        
+        if (error) {
+          console.error('Database error:', error);
+          alert('Database error occurred. Please try again.');
+          return;
+        }
+        
+        // If no exact match, try case-insensitive search
+        if (!data || data.length === 0) {
+          const { data: caseInsensitiveData, error: caseError } = await supabase
+            .from('students')
+            .select(`
+              *,
+              class:classes(*)
+            `)
+            .ilike('admission_no', searchValue)
+            .eq('is_active', true);
+          
+          if (caseError) {
+            console.error('Database error:', caseError);
+            alert('Database error occurred. Please try again.');
+            return;
+          }
+          
+          students = caseInsensitiveData;
+        } else {
+          students = data;
+        }
       } else {
-        // Search by name (case insensitive)
-        const { data } = await supabase
+        // Search by name
+        const { data, error } = await supabase
           .from('students')
           .select(`
             *,
             class:classes(*)
           `)
-          .ilike('name', `%${searchTerm.trim()}%`)
+          .ilike('name', `%${searchValue}%`)
           .eq('is_active', true);
+        
+        if (error) {
+          console.error('Database error:', error);
+          alert('Database error occurred. Please try again.');
+          return;
+        }
+        
         students = data;
       }
 
       if (!students || students.length === 0) {
-        alert('Student not found. Please check the admission number or name.');
+        alert(`Student not found with ${searchType === 'admission' ? 'admission number' : 'name'}: "${searchValue}". Please verify the information and try again.`);
         return;
       }
 
       const student = students[0];
-      const { data: feeDetails } = await db.getStudentFeeDetails(student.id);
+      const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
+      
+      if (feeError) {
+        console.error('Error loading fee details:', feeError);
+        alert('Error loading student fee details. Please try again.');
+        return;
+      }
       
       if (feeDetails) {
         setStudentDetails(feeDetails);
+      } else {
+        alert('Unable to load fee details for this student.');
       }
 
     } catch (error) {
       console.error('Search error:', error);
-      alert('An error occurred while searching. Please try again.');
+      alert(`An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setLoading(false);
     }
