@@ -394,7 +394,7 @@ export const db = {
   },
   createTransaction: async (transaction: any) => {
     // Generate receipt number (simple format for now)
-    const receiptNo = `RCP${Date.now()}`;
+    const receiptNo = `JRP${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
 
     const { data, error } = await supabase
       .from('transactions')

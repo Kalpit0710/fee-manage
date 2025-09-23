@@ -73,8 +73,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<AuthProvider><AdminApp /></AuthProvider>} />
-        <Route path="/parent-portal" element={<ParentPortal />} />
+        <Route path="/" element={<ParentPortal />} />
+        <Route path="/admin" element={<AuthProvider><AdminApp /></AuthProvider>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

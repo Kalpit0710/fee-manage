@@ -7,11 +7,29 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Smartphone
+  Smartphone,
+  Receipt,
+  Eye,
+  ArrowLeft
 } from 'lucide-react';
 import { Student, StudentFeeDetails, Quarter } from '../types';
-import { db } from '../lib/supabase';
+import { db, supabase } from '../lib/supabase';
 import { format, isAfter } from 'date-fns';
+import { PaymentGateway } from './PaymentGateway';
+import { ReceiptGenerator } from './ReceiptGenerator';
+
+interface PaymentDetails {
+  student: Student;
+  quarter: Quarter;
+  amount: number;
+  breakdown: {
+    baseFee: number;
+    extraCharges: number;
+    lateFee: number;
+    concession: number;
+    total: number;
+  };
+}
 
 export const ParentPortal: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +37,10 @@ export const ParentPortal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [studentDetails, setStudentDetails] = useState<StudentFeeDetails | null>(null);
   const [error, setError] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,54 +66,12 @@ export const ParentPortal: React.FC = () => {
 
       const student = students[0];
       
-      // Get quarters and fee details
-      const [quartersResult, feeStructuresResult, extraChargesResult, transactionsResult] = await Promise.all([
-        db.getQuarters(),
-        db.getFeeStructures({ class_id: student.class_id }),
-        supabase.from('extra_charges').select('*').or(`student_id.eq.${student.id},class_id.eq.${student.class_id}`),
-        db.getTransactions({ student_id: student.id })
-      ]);
-
-      const quarters = quartersResult.data || [];
-      const feeStructures = feeStructuresResult.data || [];
-      const extraCharges = extraChargesResult.data || [];
-      const transactions = transactionsResult.data || [];
-
-      // Calculate fee details for each quarter
-      const quarterDetails = quarters.map(quarter => {
-        const feeStructure = feeStructures.find(fs => fs.quarter_id === quarter.id);
-        const quarterExtraCharges = extraCharges.filter(ec => ec.quarter_id === quarter.id);
-        const quarterTransactions = transactions.filter(t => t.quarter_id === quarter.id);
-
-        const baseFee = feeStructure?.total_fee || 0;
-        const extraChargesAmount = quarterExtraCharges.reduce((sum, ec) => sum + ec.amount, 0);
-        const amountPaid = quarterTransactions.reduce((sum, t) => sum + t.amount_paid, 0);
-        
-        const isOverdue = isAfter(new Date(), new Date(quarter.due_date));
-        const lateFee = isOverdue && amountPaid < (baseFee + extraChargesAmount) ? quarter.late_fee_amount : 0;
-        
-        const totalDue = baseFee + extraChargesAmount + lateFee - student.concession_amount;
-        const balance = Math.max(0, totalDue - amountPaid);
-
-        return {
-          quarter,
-          fee_structure: feeStructure,
-          extra_charges: quarterExtraCharges,
-          transactions: quarterTransactions,
-          base_fee: baseFee,
-          extra_charges_amount: extraChargesAmount,
-          late_fee: lateFee,
-          total_due: totalDue,
-          amount_paid: amountPaid,
-          balance,
-          is_overdue: isOverdue && balance > 0
-        };
-      });
-
-      setStudentDetails({
-        student,
-        quarters: quarterDetails
-      });
+      // Get detailed fee information
+      const { data: feeDetails } = await db.getStudentFeeDetails(student.id);
+      
+      if (feeDetails) {
+        setStudentDetails(feeDetails);
+      }
 
     } catch (err) {
       console.error('Search error:', err);
@@ -101,9 +81,89 @@ export const ParentPortal: React.FC = () => {
     }
   };
 
-  const handlePayOnline = (quarterId: string, amount: number) => {
-    // In a real implementation, this would redirect to payment gateway
-    alert(`Redirecting to payment gateway for ₹${amount}...`);
+  const handlePayOnline = (quarter: any) => {
+    if (!studentDetails) return;
+
+    const paymentInfo: PaymentDetails = {
+      student: studentDetails.student,
+      quarter: quarter.quarter,
+      amount: quarter.balance,
+      breakdown: {
+        baseFee: quarter.base_fee,
+        extraCharges: quarter.extra_charges_amount,
+        lateFee: quarter.late_fee,
+        concession: studentDetails.student.concession_amount || 0,
+        total: quarter.balance
+      }
+    };
+
+    setPaymentDetails(paymentInfo);
+    setShowPayment(true);
+  };
+
+  const handlePaymentSuccess = async (paymentData: any) => {
+    try {
+      // Record the transaction in database
+      const transactionData = {
+        student_id: paymentData.student_id,
+        quarter_id: paymentData.quarter_id,
+        amount_paid: paymentData.amount,
+        late_fee: paymentData.late_fee || 0,
+        payment_mode: 'online',
+        payment_reference: paymentData.razorpay_payment_id,
+        notes: `Online payment via Razorpay - ${paymentData.razorpay_payment_id}`,
+        created_by: null // Parent payment
+      };
+
+      const { data: transaction } = await db.createTransaction(transactionData);
+      
+      if (transaction) {
+        // Show receipt
+        setReceiptData({
+          transaction,
+          student: paymentDetails?.student,
+          quarter: paymentDetails?.quarter,
+          breakdown: paymentDetails?.breakdown,
+          paymentId: paymentData.razorpay_payment_id
+        });
+        setShowReceipt(true);
+        setShowPayment(false);
+        
+        // Refresh student details
+        if (studentDetails) {
+          const { data: updatedDetails } = await db.getStudentFeeDetails(studentDetails.student.id);
+          if (updatedDetails) {
+            setStudentDetails(updatedDetails);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      alert('Payment was successful but there was an error recording it. Please contact the school office.');
+    }
+  };
+
+  const handlePaymentFailure = (error: any) => {
+    console.error('Payment failed:', error);
+    alert('Payment failed. Please try again or contact the school office.');
+    setShowPayment(false);
+  };
+
+  const handleViewReceipt = (transaction: any, quarter: any) => {
+    setReceiptData({
+      transaction,
+      student: studentDetails?.student,
+      quarter: quarter.quarter,
+      breakdown: {
+        baseFee: quarter.base_fee,
+        extraCharges: quarter.extra_charges_amount,
+        lateFee: quarter.late_fee,
+        concession: studentDetails?.student.concession_amount || 0,
+        total: transaction.amount_paid
+      },
+      paymentId: transaction.payment_reference
+    });
+    setShowReceipt(true);
   };
 
   const getStatusBadge = (quarter: any) => {
@@ -133,78 +193,103 @@ export const ParentPortal: React.FC = () => {
     );
   };
 
+  const resetSearch = () => {
+    setStudentDetails(null);
+    setSearchTerm('');
+    setError('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-blue-600 text-white py-12">
         <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-3xl font-bold mb-4">J.R. Preparatory School</h1>
-          <p className="text-blue-100 text-lg">Parent Fee Portal - Check and pay your child's school fees online</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-4">J.R. Preparatory School</h1>
+              <p className="text-blue-100 text-lg">Parent Fee Portal - Check and pay your child's school fees online</p>
+            </div>
+            <a 
+              href="/admin" 
+              className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors text-sm"
+            >
+              Admin Login
+            </a>
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Search Form */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Search Student</h2>
-          
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="sm:w-48">
-                <select
-                  value={searchType}
-                  onChange={(e) => setSearchType(e.target.value as 'admission' | 'name')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="admission">Admission Number</option>
-                  <option value="name">Student Name</option>
-                </select>
-              </div>
-              
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={
-                      searchType === 'admission' 
-                        ? 'Enter admission number (e.g., 2024001)' 
-                        : 'Enter student name'
-                    }
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
+        {!studentDetails ? (
+          /* Search Form */
+          <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Search Student</h2>
+            
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="sm:w-48">
+                  <select
+                    value={searchType}
+                    onChange={(e) => setSearchType(e.target.value as 'admission' | 'name')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="admission">Admission Number</option>
+                    <option value="name">Student Name</option>
+                  </select>
                 </div>
+                
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder={
+                        searchType === 'admission' 
+                          ? 'Enter admission number (e.g., 2024001)' 
+                          : 'Enter student name'
+                      }
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  <span>{loading ? 'Searching...' : 'Search'}</span>
+                </button>
               </div>
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Search className="w-4 h-4" />
-                )}
-                <span>{loading ? 'Searching...' : 'Search'}</span>
-              </button>
-            </div>
-          </form>
+            </form>
 
-          {error && (
-            <div className="mt-4 flex items-center space-x-2 text-red-600 bg-red-50 p-3 rounded-lg">
-              <AlertCircle className="w-5 h-5" />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Student Details */}
-        {studentDetails && (
+            {error && (
+              <div className="mt-4 flex items-center space-x-2 text-red-600 bg-red-50 p-3 rounded-lg">
+                <AlertCircle className="w-5 h-5" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Student Details */
           <div className="space-y-6">
+            {/* Back Button */}
+            <button
+              onClick={resetSearch}
+              className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Search Another Student</span>
+            </button>
+
             {/* Student Info */}
             <div className="bg-white rounded-xl shadow-sm border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Information</h3>
@@ -276,11 +361,16 @@ export const ParentPortal: React.FC = () => {
                                 <p className="font-medium">₹{transaction.amount_paid.toLocaleString()}</p>
                                 <p className="text-sm text-gray-600">
                                   {format(new Date(transaction.payment_date), 'MMM dd, yyyy')} • 
-                                  Receipt: {transaction.receipt_no}
+                                  Receipt: {transaction.receipt_no} • 
+                                  {transaction.payment_mode.toUpperCase()}
                                 </p>
                               </div>
-                              <button className="text-blue-600 hover:text-blue-700 p-1">
-                                <Download className="w-4 h-4" />
+                              <button 
+                                onClick={() => handleViewReceipt(transaction, quarter)}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex items-center space-x-1"
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span className="text-sm">View Receipt</span>
                               </button>
                             </div>
                           ))}
@@ -292,7 +382,7 @@ export const ParentPortal: React.FC = () => {
                     {quarter.balance > 0 && (
                       <div className="flex flex-col sm:flex-row gap-3">
                         <button
-                          onClick={() => handlePayOnline(quarter.quarter.id, quarter.balance)}
+                          onClick={() => handlePayOnline(quarter)}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
                         >
                           <Smartphone className="w-5 h-5" />
@@ -329,6 +419,24 @@ export const ParentPortal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Gateway Modal */}
+      {showPayment && paymentDetails && (
+        <PaymentGateway
+          paymentDetails={paymentDetails}
+          onSuccess={handlePaymentSuccess}
+          onFailure={handlePaymentFailure}
+          onClose={() => setShowPayment(false)}
+        />
+      )}
+
+      {/* Receipt Modal */}
+      {showReceipt && receiptData && (
+        <ReceiptGenerator
+          receiptData={receiptData}
+          onClose={() => setShowReceipt(false)}
+        />
+      )}
     </div>
   );
 };
