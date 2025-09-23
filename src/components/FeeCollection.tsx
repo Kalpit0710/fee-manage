@@ -12,7 +12,7 @@ import {
   Printer
 } from 'lucide-react';
 import { Student, Quarter, StudentFeeDetails, PaymentRequest } from '../types';
-import { db } from '../lib/supabase';
+import { db, supabase } from '../lib/supabase';
 import { format, isAfter } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -45,9 +45,31 @@ export const FeeCollection: React.FC = () => {
     setStudentDetails(null);
 
     try {
-      const { data: students } = await db.getStudents({ 
-        search: searchTerm.trim() 
-      });
+      let students;
+      
+      if (searchType === 'admission') {
+        // Direct search by admission number
+        const { data } = await supabase
+          .from('students')
+          .select(`
+            *,
+            class:classes(*)
+          `)
+          .eq('admission_no', searchTerm.trim())
+          .eq('is_active', true);
+        students = data;
+      } else {
+        // Search by name (case insensitive)
+        const { data } = await supabase
+          .from('students')
+          .select(`
+            *,
+            class:classes(*)
+          `)
+          .ilike('name', `%${searchTerm.trim()}%`)
+          .eq('is_active', true);
+        students = data;
+      }
 
       if (!students || students.length === 0) {
         alert('Student not found. Please check the admission number or name.');

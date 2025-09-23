@@ -51,13 +51,31 @@ export const ParentPortal: React.FC = () => {
     setStudentDetails(null);
 
     try {
-      const searchFilter = searchType === 'admission' 
-        ? { admission_no: searchTerm.trim() }
-        : { name: searchTerm.trim() };
-
-      const { data: students } = await db.getStudents({ 
-        search: searchTerm.trim() 
-      });
+      let students;
+      
+      if (searchType === 'admission') {
+        // Direct search by admission number
+        const { data } = await supabase
+          .from('students')
+          .select(`
+            *,
+            class:classes(*)
+          `)
+          .eq('admission_no', searchTerm.trim())
+          .eq('is_active', true);
+        students = data;
+      } else {
+        // Search by name (case insensitive)
+        const { data } = await supabase
+          .from('students')
+          .select(`
+            *,
+            class:classes(*)
+          `)
+          .ilike('name', `%${searchTerm.trim()}%`)
+          .eq('is_active', true);
+        students = data;
+      }
 
       if (!students || students.length === 0) {
         setError('Student not found. Please check the admission number or name.');
