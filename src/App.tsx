@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
 import { LoginForm } from './components/LoginForm';
@@ -14,21 +14,14 @@ import { LateFeeConfiguration } from './components/LateFeeConfiguration';
 import { Reports } from './components/Reports';
 import { ParentPortal } from './components/ParentPortal';
 
-const AdminApp: React.FC = () => {
-  const { user, loading } = useAuth();
-  const [currentSection, setCurrentSection] = useState('dashboard');
+const AdminSection: React.FC = () => {
+  const { section } = useParams<{ section: string }>();
+  const navigate = useNavigate();
+  const currentSection = section || 'dashboard';
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginForm />;
-  }
+  const handleSectionChange = (newSection: string) => {
+    navigate(`/admin/${newSection}`);
+  };
 
   const renderSection = () => {
     switch (currentSection) {
@@ -62,11 +55,29 @@ const AdminApp: React.FC = () => {
   return (
     <Layout 
       currentSection={currentSection} 
-      onSectionChange={setCurrentSection}
+      onSectionChange={handleSectionChange}
     >
       {renderSection()}
     </Layout>
   );
+};
+
+const AdminApp: React.FC = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  return <AdminSection />;
 };
 
 function App() {
@@ -74,7 +85,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<ParentPortal />} />
-        <Route path="/admin" element={<AuthProvider><AdminApp /></AuthProvider>} />
+        <Route path="/admin" element={<AuthProvider><Navigate to="/admin/dashboard" replace /></AuthProvider>} />
+        <Route path="/admin/:section" element={<AuthProvider><AdminApp /></AuthProvider>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

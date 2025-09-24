@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   CreditCard, 
@@ -32,8 +33,16 @@ interface PaymentDetails {
 }
 
 export const ParentPortal: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState<'admission' | 'name'>('admission');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  // Get initial values from URL params
+  const initialSearchTerm = searchParams.get('search') || '';
+  const initialSearchType = (searchParams.get('type') as 'admission' | 'name') || 'admission';
+  const studentId = searchParams.get('student');
+  
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [searchType, setSearchType] = useState<'admission' | 'name'>(initialSearchType);
   const [loading, setLoading] = useState(false);
   const [studentDetails, setStudentDetails] = useState<StudentFeeDetails | null>(null);
   const [error, setError] = useState('');
@@ -42,9 +51,59 @@ export const ParentPortal: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
 
+  // Load student details if student ID is in URL
+  React.useEffect(() => {
+    if (studentId && !studentDetails) {
+      loadStudentById(studentId);
+    }
+  }, [studentId]);
+
+  const loadStudentById = async (id: string) => {
+    setLoading(true);
+    try {
+      const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(id);
+      
+      if (feeError) {
+        console.error('Error loading fee details:', feeError);
+        setError('Error loading student fee details. Please try again.');
+        return;
+      }
+      
+      if (feeDetails) {
+        setStudentDetails(feeDetails);
+        // Update search term to show student info
+        setSearchTerm(feeDetails.student.admission_no);
+        setSearchType('admission');
+      }
+    } catch (err) {
+      console.error('Error loading student:', err);
+      setError('Error loading student details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateURL = (params: Record<string, string>) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) {
+        newSearchParams.set(key, value);
+      } else {
+        newSearchParams.delete(key);
+      }
+    });
+    setSearchParams(newSearchParams);
+  };
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
+
+    // Update URL with search parameters
+    updateURL({
+      search: searchTerm.trim(),
+      type: searchType,
+      student: '' // Clear student ID when searching
+    });
 
     setLoading(true);
     setError('');
@@ -130,6 +189,12 @@ export const ParentPortal: React.FC = () => {
       
       if (feeDetails) {
         setStudentDetails(feeDetails);
+        // Update URL with student ID
+        updateURL({
+          search: searchTerm.trim(),
+          type: searchType,
+          student: student.id
+        });
       } else {
         setError('Unable to load fee details for this student.');
       }
@@ -258,6 +323,8 @@ export const ParentPortal: React.FC = () => {
     setStudentDetails(null);
     setSearchTerm('');
     setError('');
+    // Clear URL parameters
+    setSearchParams({});
   };
 
   return (

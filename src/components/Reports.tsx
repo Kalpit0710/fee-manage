@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Download, 
   Filter,
@@ -49,22 +50,48 @@ interface ReportData {
 }
 
 export const Reports: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [quarters, setQuarters] = useState<Quarter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'defaulters'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'defaulters'>(
+    (searchParams.get('tab') as 'overview' | 'transactions' | 'defaulters') || 'overview'
+  );
   
   const [filters, setFilters] = useState<ReportFilters>({
-    dateFrom: format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'),
-    dateTo: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
-    classId: '',
-    quarterId: '',
-    paymentMode: ''
+    dateFrom: searchParams.get('dateFrom') || format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'),
+    dateTo: searchParams.get('dateTo') || format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+    classId: searchParams.get('classId') || '',
+    quarterId: searchParams.get('quarterId') || '',
+    paymentMode: searchParams.get('paymentMode') || ''
   });
 
+  const updateURL = (updates: Partial<{ tab: string } & ReportFilters>) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        newSearchParams.set(key, value);
+      } else {
+        newSearchParams.delete(key);
+      }
+    });
+    setSearchParams(newSearchParams);
+  };
+
+  const handleTabChange = (tab: 'overview' | 'transactions' | 'defaulters') => {
+    setActiveTab(tab);
+    updateURL({ tab });
+  };
+
+  const handleFilterChange = (filterUpdates: Partial<ReportFilters>) => {
+    const newFilters = { ...filters, ...filterUpdates };
+    setFilters(newFilters);
+    updateURL(newFilters);
+  };
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -234,7 +261,7 @@ export const Reports: React.FC = () => {
             <input
               type="date"
               value={filters.dateFrom}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              onChange={(e) => handleFilterChange({ dateFrom: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -244,7 +271,7 @@ export const Reports: React.FC = () => {
             <input
               type="date"
               value={filters.dateTo}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+              onChange={(e) => handleFilterChange({ dateTo: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -253,7 +280,7 @@ export const Reports: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
             <select
               value={filters.classId}
-              onChange={(e) => setFilters({ ...filters, classId: e.target.value })}
+              onChange={(e) => handleFilterChange({ classId: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Classes</option>
@@ -267,7 +294,7 @@ export const Reports: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Quarter</label>
             <select
               value={filters.quarterId}
-              onChange={(e) => setFilters({ ...filters, quarterId: e.target.value })}
+              onChange={(e) => handleFilterChange({ quarterId: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Quarters</option>
@@ -281,7 +308,7 @@ export const Reports: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
             <select
               value={filters.paymentMode}
-              onChange={(e) => setFilters({ ...filters, paymentMode: e.target.value })}
+              onChange={(e) => handleFilterChange({ paymentMode: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Modes</option>
@@ -303,7 +330,7 @@ export const Reports: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => handleTabChange(tab.id as any)}
                   className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
