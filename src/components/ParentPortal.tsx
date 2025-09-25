@@ -110,12 +110,10 @@ export const ParentPortal: React.FC = () => {
     setStudentDetails(null);
 
     try {
-      let students = null;
       const searchValue = searchTerm.trim();
       
       if (searchType === 'admission') {
-        // Try exact match first
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from('students')
           .select(`
             *,
@@ -130,26 +128,32 @@ export const ParentPortal: React.FC = () => {
           return;
         }
         
-        // If no exact match, try case-insensitive search
         if (!data || data.length === 0) {
-          const { data: caseInsensitiveData, error: caseError } = await supabase
-            .from('students')
-            .select(`
-              *,
-              class:classes(*)
-            `)
-            .ilike('admission_no', searchValue)
-            .eq('is_active', true);
-          
-          if (caseError) {
-            console.error('Database error:', caseError);
-            setError('Database error occurred. Please try again.');
-            return;
-          }
-          
-          students = caseInsensitiveData;
+          setError(`Student not found with admission number: "${searchValue}". Please verify the admission number and try again.`);
+          return;
+        }
+        
+        const student = data[0];
+        
+        // Get detailed fee information
+        const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
+        
+        if (feeError) {
+          console.error('Error loading fee details:', feeError);
+          setError('Error loading student fee details. Please try again.');
+          return;
+        }
+        
+        if (feeDetails) {
+          setStudentDetails(feeDetails);
+          // Update URL with student ID
+          updateURL({
+            search: searchTerm.trim(),
+            type: searchType,
+            student: student.id
+          });
         } else {
-          students = data;
+          setError('Unable to load fee details for this student.');
         }
       } else {
         // Search by name
@@ -168,35 +172,33 @@ export const ParentPortal: React.FC = () => {
           return;
         }
         
-        students = data;
-      }
-
-      if (!students || students.length === 0) {
-        setError(`Student not found with ${searchType === 'admission' ? 'admission number' : 'name'}: "${searchValue}". Please verify the information and try again.`);
-        return;
-      }
-
-      const student = students[0];
-      
-      // Get detailed fee information
-      const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
-      
-      if (feeError) {
-        console.error('Error loading fee details:', feeError);
-        setError('Error loading student fee details. Please try again.');
-        return;
-      }
-      
-      if (feeDetails) {
-        setStudentDetails(feeDetails);
-        // Update URL with student ID
-        updateURL({
-          search: searchTerm.trim(),
-          type: searchType,
-          student: student.id
-        });
-      } else {
-        setError('Unable to load fee details for this student.');
+        if (!data || data.length === 0) {
+          setError(`Student not found with name: "${searchValue}". Please verify the name and try again.`);
+          return;
+        }
+        
+        const student = data[0];
+        
+        // Get detailed fee information
+        const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
+        
+        if (feeError) {
+          console.error('Error loading fee details:', feeError);
+          setError('Error loading student fee details. Please try again.');
+          return;
+        }
+        
+        if (feeDetails) {
+          setStudentDetails(feeDetails);
+          // Update URL with student ID
+          updateURL({
+            search: searchTerm.trim(),
+            type: searchType,
+            student: student.id
+          });
+        } else {
+          setError('Unable to load fee details for this student.');
+        }
       }
 
     } catch (err) {
