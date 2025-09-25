@@ -26,9 +26,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Get initial session
     const getSession = async () => {
-      const { user: authUser } = await auth.getCurrentUser();
+      const { user: authUser, error } = await auth.getCurrentUser();
       
-      if (authUser) {
+      if (authUser && !error) {
         // Get user details from users table
         const { data: userData } = await supabase
           .from('users')
@@ -37,6 +37,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
         
         setUser(userData);
+      } else {
+        // Clear any invalid session data
+        setUser(null);
       }
       
       setLoading(false);
@@ -45,7 +48,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = auth.onAuthStateChange(async (authUser) => {
+    const { data: { subscription } } = auth.onAuthStateChange(async (event, authUser) => {
+      if (event === 'SIGNED_OUT' || !authUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
       if (authUser) {
         let { data: userData } = await supabase
           .from('users')
@@ -73,8 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         setUser(userData);
-      } else {
-        setUser(null);
       }
       setLoading(false);
     });
