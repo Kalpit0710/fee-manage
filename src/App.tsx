@@ -13,6 +13,8 @@ import { ExtraChargeManagement } from './components/ExtraChargeManagement';
 import { LateFeeConfiguration } from './components/LateFeeConfiguration';
 import { Reports } from './components/Reports';
 import { ParentPortal } from './components/ParentPortal';
+import { TransactionManagement } from './components/TransactionManagement';
+import { Settings } from './components/Settings';
 
 const AdminSection: React.FC = () => {
   const { section } = useParams<{ section: string }>();
@@ -42,11 +44,11 @@ const AdminSection: React.FC = () => {
       case 'fee-collection':
         return <FeeCollection />;
       case 'transactions':
-        return <div>Transactions Management (Coming Soon)</div>;
+        return <TransactionManagement />;
       case 'reports':
         return <Reports />;
       case 'settings':
-        return <div>Settings (Coming Soon)</div>;
+        return <Settings />;
       default:
         return <Dashboard />;
     }
