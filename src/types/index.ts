@@ -6,8 +6,7 @@ export interface Student {
   section?: string;
   parent_contact?: string;
   parent_email?: string;
-  concession_amount: number;
-  concession_percentage: number;
+  concession?: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;

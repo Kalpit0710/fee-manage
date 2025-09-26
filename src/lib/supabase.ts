@@ -495,14 +495,15 @@ export const db = {
       const quarterExtraCharges = extraCharges.filter(ec => ec.quarter_id === quarter.id);
       const quarterTransactions = transactions.filter(t => t.quarter_id === quarter.id);
 
-      const baseFee = feeStructure?.total_fee || 0;
+      const baseFee = feeStructure?.total_fee || student.class?.quarterly_fee || 0;
       const extraChargesAmount = quarterExtraCharges.reduce((sum, ec) => sum + ec.amount, 0);
       const amountPaid = quarterTransactions.reduce((sum, t) => sum + t.amount_paid, 0);
       
       const isOverdue = new Date() > new Date(quarter.due_date);
-      const lateFee = isOverdue && amountPaid < (baseFee + extraChargesAmount) ? 100 : 0;
+      const lateFee = isOverdue && amountPaid < (baseFee + extraChargesAmount) ? 100 : 0; // Default late fee
       
-      const totalDue = baseFee + extraChargesAmount + lateFee - (student.concession_amount || 0);
+      const concessionAmount = student.concession || 0;
+      const totalDue = baseFee + extraChargesAmount + lateFee - concessionAmount;
       const balance = Math.max(0, totalDue - amountPaid);
 
       return {

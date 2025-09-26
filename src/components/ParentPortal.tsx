@@ -98,13 +98,6 @@ export const ParentPortal: React.FC = () => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
-    // Update URL with search parameters
-    updateURL({
-      search: searchTerm.trim(),
-      type: searchType,
-      student: '' // Clear student ID when searching
-    });
-
     setLoading(true);
     setError('');
     setStudentDetails(null);
@@ -113,7 +106,8 @@ export const ParentPortal: React.FC = () => {
       const searchValue = searchTerm.trim();
       
       if (searchType === 'admission') {
-        const { data, error } = await supabase
+        // Try exact match first
+        let { data, error } = await supabase
           .from('students')
           .select(`
             *,
@@ -124,8 +118,28 @@ export const ParentPortal: React.FC = () => {
         
         if (error) {
           console.error('Database error:', error);
-          setError('Database error occurred. Please try again.');
+          setError('Unable to search students. Please try again.');
           return;
+        }
+        
+        // If no exact match, try case-insensitive search
+        if (!data || data.length === 0) {
+          const { data: caseInsensitiveData, error: caseError } = await supabase
+            .from('students')
+            .select(`
+              *,
+              class:classes(*)
+            `)
+            .ilike('admission_no', searchValue)
+            .eq('is_active', true);
+          
+          if (caseError) {
+            console.error('Database error:', caseError);
+            setError('Unable to search students. Please try again.');
+            return;
+          }
+          
+          data = caseInsensitiveData;
         }
         
         if (!data || data.length === 0) {
@@ -133,28 +147,6 @@ export const ParentPortal: React.FC = () => {
           return;
         }
         
-        const student = data[0];
-        
-        // Get detailed fee information
-        const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
-        
-        if (feeError) {
-          console.error('Error loading fee details:', feeError);
-          setError('Error loading student fee details. Please try again.');
-          return;
-        }
-        
-        if (feeDetails) {
-          setStudentDetails(feeDetails);
-          // Update URL with student ID
-          updateURL({
-            search: searchTerm.trim(),
-            type: searchType,
-            student: student.id
-          });
-        } else {
-          setError('Unable to load fee details for this student.');
-        }
       } else {
         // Search by name
         const { data, error } = await supabase
@@ -168,7 +160,7 @@ export const ParentPortal: React.FC = () => {
         
         if (error) {
           console.error('Database error:', error);
-          setError('Database error occurred. Please try again.');
+          setError('Unable to search students. Please try again.');
           return;
         }
         
@@ -176,29 +168,29 @@ export const ParentPortal: React.FC = () => {
           setError(`Student not found with name: "${searchValue}". Please verify the name and try again.`);
           return;
         }
-        
-        const student = data[0];
-        
-        // Get detailed fee information
-        const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
-        
-        if (feeError) {
-          console.error('Error loading fee details:', feeError);
-          setError('Error loading student fee details. Please try again.');
-          return;
-        }
-        
-        if (feeDetails) {
-          setStudentDetails(feeDetails);
-          // Update URL with student ID
-          updateURL({
-            search: searchTerm.trim(),
-            type: searchType,
-            student: student.id
-          });
-        } else {
-          setError('Unable to load fee details for this student.');
-        }
+      }
+
+      const student = data[0];
+      
+      // Get detailed fee information
+      const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
+      
+      if (feeError) {
+        console.error('Error loading fee details:', feeError);
+        setError('Error loading student fee details. Please try again.');
+        return;
+      }
+      
+      if (feeDetails) {
+        setStudentDetails(feeDetails);
+        // Update URL with student ID
+        updateURL({
+          search: searchTerm.trim(),
+          type: searchType,
+          student: student.id
+        });
+      } else {
+        setError('Unable to load fee details for this student.');
       }
 
     } catch (err) {
@@ -212,16 +204,23 @@ export const ParentPortal: React.FC = () => {
   const handlePayOnline = (quarter: any) => {
     if (!studentDetails) return;
 
+    // Calculate proper amounts
+    const baseFee = quarter.base_fee || 0;
+    const extraCharges = quarter.extra_charges_amount || 0;
+    const lateFee = quarter.late_fee || 0;
+    const concession = studentDetails.student.concession || 0;
+    const totalAmount = Math.max(0, baseFee + extraCharges + lateFee - concession);
+
     const paymentInfo: PaymentDetails = {
       student: studentDetails.student,
       quarter: quarter.quarter,
-      amount: quarter.balance,
+      amount: totalAmount,
       breakdown: {
-        baseFee: quarter.base_fee,
-        extraCharges: quarter.extra_charges_amount,
-        lateFee: quarter.late_fee,
-        concession: studentDetails.student.concession_amount || 0,
-        total: quarter.balance
+        baseFee: baseFee,
+        extraCharges: extraCharges,
+        lateFee: lateFee,
+        concession: concession,
+        total: totalAmount
       }
     };
 
@@ -236,7 +235,7 @@ export const ParentPortal: React.FC = () => {
         student_id: paymentData.student_id,
         quarter_id: paymentData.quarter_id,
         amount_paid: paymentData.amount,
-        late_fee: paymentData.late_fee || 0,
+        late_fee: 0,
         payment_mode: 'online',
         payment_reference: paymentData.razorpay_payment_id,
         notes: `Online payment via Razorpay - ${paymentData.razorpay_payment_id}`,
@@ -283,10 +282,10 @@ export const ParentPortal: React.FC = () => {
       student: studentDetails?.student,
       quarter: quarter.quarter,
       breakdown: {
-        baseFee: quarter.base_fee,
-        extraCharges: quarter.extra_charges_amount,
-        lateFee: quarter.late_fee,
-        concession: studentDetails?.student.concession_amount || 0,
+        baseFee: quarter.base_fee || 0,
+        extraCharges: quarter.extra_charges_amount || 0,
+        lateFee: quarter.late_fee || 0,
+        concession: studentDetails?.student.concession || 0,
         total: transaction.amount_paid
       },
       paymentId: transaction.payment_reference
