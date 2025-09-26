@@ -23,22 +23,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const handleUserSession = async (authUser: any) => {
+    try {
+      // Get user details from users table
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', authUser.email)
+        .single();
+      
+      if (error) {
+        // If we get a 403 or session error, sign out to clear invalid session
+        console.error('Error fetching user data:', error);
+        await auth.signOut();
+        setUser(null);
+        return null;
+      }
+      
+      // If user doesn't exist in users table, create them
+      if (!userData) {
+        const role = authUser.email?.includes('admin') ? 'admin' : 'cashier';
+        const name = authUser.email?.includes('admin') ? 'System Administrator' : 'Cashier';
+        
+        const { data: newUser, error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: authUser.id,
+            name: name,
+            email: authUser.email,
+            role: role
+          })
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('Error creating user:', insertError);
+          await auth.signOut();
+          setUser(null);
+          return null;
+        }
+        
+        return newUser;
+      }
+      
+      return userData;
+    } catch (error) {
+      console.error('Session handling error:', error);
+      await auth.signOut();
+      setUser(null);
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     const getSession = async () => {
-      const { user: authUser, error } = await auth.getCurrentUser();
-      
-      if (authUser && !error) {
-        // Get user details from users table
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', authUser.email)
-          .single();
+      try {
+        const { user: authUser, error } = await auth.getCurrentUser();
         
-        setUser(userData);
-      } else {
-        // Clear any invalid session data
+        if (authUser && !error) {
+          const userData = await handleUserSession(authUser);
+          setUser(userData);
+        } else {
+          // Clear any invalid session data
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Get session error:', error);
         setUser(null);
       }
       
@@ -56,31 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (authUser) {
-        let { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', authUser.email)
-          .single();
-        
-        // If user doesn't exist in users table, create them
-        if (!userData) {
-          const role = authUser.email?.includes('admin') ? 'admin' : 'cashier';
-          const name = authUser.email?.includes('admin') ? 'System Administrator' : 'Cashier';
-          
-          const { data: newUser } = await supabase
-            .from('users')
-            .insert({
-              id: authUser.id,
-              name: name,
-              email: authUser.email,
-              role: role
-            })
-            .select()
-            .single();
-          
-          userData = newUser;
-        }
-        
+        const userData = await handleUserSession(authUser);
         setUser(userData);
       }
       setLoading(false);
