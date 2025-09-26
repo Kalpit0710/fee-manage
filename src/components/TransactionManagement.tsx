@@ -1,20 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  Edit, 
-  Trash2, 
-  Eye,
-  RefreshCw,
-  Calendar,
-  DollarSign,
-  User,
-  CreditCard,
-  X,
-  Save,
-  AlertTriangle
-} from 'lucide-react';
+import { Search, Filter, Download, CreditCard as Edit, Trash2, Eye, RefreshCw, Calendar, DollarSign, User, CreditCard, X, Save, AlertTriangle } from 'lucide-react';
 import { Transaction, Student, Quarter, Class } from '../types';
 import { db } from '../lib/supabase';
 import { format } from 'date-fns';
