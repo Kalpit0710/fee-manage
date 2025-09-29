@@ -23,8 +23,24 @@ export const Dashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     setLoading(true);
-    const { data } = await db.getDashboardStats();
-    setStats(data);
+    try {
+      const { data } = await db.getDashboardStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      // Set default stats to prevent crashes
+      setStats({
+        total_students: 0,
+        total_collected: 0,
+        pending_amount: 0,
+        late_fees_collected: 0,
+        online_payments: 0,
+        offline_payments: 0,
+        collections_by_quarter: [],
+        collections_by_class: [],
+        recent_transactions: []
+      });
+    }
     setLoading(false);
   };
 

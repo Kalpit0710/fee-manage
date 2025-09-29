@@ -172,7 +172,7 @@ export const TransactionManagement: React.FC = () => {
       refunded: { color: 'bg-gray-100 text-gray-800', label: 'Refunded' }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.completed;
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
         {config.label}

@@ -160,7 +160,8 @@ export const FeeCollection: React.FC = () => {
       const transactionData = {
         ...paymentData,
         cheque_date: paymentData.cheque_date || null,
-        created_by: user?.id
+        created_by: user?.id,
+        status: 'completed'
       };
 
       const { data: transaction } = await db.createTransaction(transactionData);

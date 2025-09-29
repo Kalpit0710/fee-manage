@@ -400,7 +400,8 @@ export const db = {
       .from('transactions')
       .insert({
         ...transaction,
-        receipt_no: receiptNo
+        receipt_no: receiptNo,
+        status: transaction.status || 'completed'
       })
       .select(`
         *,
@@ -493,14 +494,18 @@ export const db = {
         fs.quarter_id === quarter.id && fs.class_id === student.class_id
       );
       const quarterExtraCharges = extraCharges.filter(ec => ec.quarter_id === quarter.id);
-      const quarterTransactions = transactions.filter(t => t.quarter_id === quarter.id);
+      const quarterTransactions = transactions.filter(t => 
+        t.quarter_id === quarter.id && t.status === 'completed'
+      );
 
       const baseFee = feeStructure?.total_fee || student.class?.quarterly_fee || 0;
       const extraChargesAmount = quarterExtraCharges.reduce((sum, ec) => sum + ec.amount, 0);
       const amountPaid = quarterTransactions.reduce((sum, t) => sum + t.amount_paid, 0);
       
       const isOverdue = new Date() > new Date(quarter.due_date);
-      const lateFee = isOverdue && amountPaid < (baseFee + extraChargesAmount) ? 100 : 0; // Default late fee
+      const totalDueBeforeLateFee = baseFee + extraChargesAmount;
+      const lateFee = isOverdue && amountPaid < totalDueBeforeLateFee ? 
+        Math.min(quarter.late_fee_amount || 100, totalDueBeforeLateFee * 0.05) : 0;
       
       const concessionAmount = student.concession || 0;
       const totalDue = baseFee + extraChargesAmount + lateFee - concessionAmount;

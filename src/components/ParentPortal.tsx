@@ -253,7 +253,8 @@ export const ParentPortal: React.FC = () => {
         payment_mode: 'online',
         payment_reference: paymentData.razorpay_payment_id,
         notes: `Online payment via Razorpay - ${paymentData.razorpay_payment_id}`,
-        created_by: null // Parent payment
+        created_by: null, // Parent payment
+        status: 'completed'
       };
 
       const { data: transaction } = await db.createTransaction(transactionData);
