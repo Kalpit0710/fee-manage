@@ -11,7 +11,9 @@ import {
   Smartphone,
   Receipt,
   Eye,
-  ArrowLeft
+  ArrowLeft,
+  User,
+  BookOpen
 } from 'lucide-react';
 import { Student, StudentFeeDetails, Quarter } from '../types';
 import { db, supabase } from '../lib/supabase';
@@ -60,6 +62,8 @@ export const ParentPortal: React.FC = () => {
 
   const loadStudentById = async (id: string) => {
     setLoading(true);
+    setError('');
+    
     try {
       const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(id);
       
@@ -94,6 +98,7 @@ export const ParentPortal: React.FC = () => {
     });
     setSearchParams(newSearchParams);
   };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
@@ -104,10 +109,13 @@ export const ParentPortal: React.FC = () => {
 
     try {
       const searchValue = searchTerm.trim();
+      console.log('Searching for:', searchValue, 'Type:', searchType);
+      
+      let students = null;
       
       if (searchType === 'admission') {
-        // Try exact match first
-        let { data, error } = await supabase
+        // Search by admission number - try exact match first
+        const { data, error } = await supabase
           .from('students')
           .select(`
             *,
@@ -118,13 +126,17 @@ export const ParentPortal: React.FC = () => {
         
         if (error) {
           console.error('Database error:', error);
-          setError('Unable to search students. Please try again.');
+          setError('Unable to search students. Please check your connection and try again.');
           return;
         }
         
+        students = data;
+        console.log('Search results:', students);
+        
         // If no exact match, try case-insensitive search
-        if (!data || data.length === 0) {
-          const { data: caseInsensitiveData, error: caseError } = await supabase
+        if (!students || students.length === 0) {
+          console.log('No exact match, trying case-insensitive search...');
+          const { data: caseData, error: caseError } = await supabase
             .from('students')
             .select(`
               *,
@@ -134,21 +146,18 @@ export const ParentPortal: React.FC = () => {
             .eq('is_active', true);
           
           if (caseError) {
-            console.error('Database error:', caseError);
+            console.error('Case-insensitive search error:', caseError);
             setError('Unable to search students. Please try again.');
             return;
           }
           
-          data = caseInsensitiveData;
-        }
-        
-        if (!data || data.length === 0) {
-          setError(`Student not found with admission number: "${searchValue}". Please verify the admission number and try again.`);
-          return;
+          students = caseData;
+          console.log('Case-insensitive results:', students);
         }
         
       } else {
         // Search by name
+        console.log('Searching by name...');
         const { data, error } = await supabase
           .from('students')
           .select(`
@@ -159,18 +168,22 @@ export const ParentPortal: React.FC = () => {
           .eq('is_active', true);
         
         if (error) {
-          console.error('Database error:', error);
+          console.error('Name search error:', error);
           setError('Unable to search students. Please try again.');
           return;
         }
         
-        if (!data || data.length === 0) {
-          setError(`Student not found with name: "${searchValue}". Please verify the name and try again.`);
-          return;
-        }
+        students = data;
+        console.log('Name search results:', students);
       }
 
-      const student = data[0];
+      if (!students || students.length === 0) {
+        setError(`No student found with ${searchType === 'admission' ? 'admission number' : 'name'}: "${searchValue}". Please verify the information and try again.`);
+        return;
+      }
+
+      const student = students[0];
+      console.log('Selected student:', student);
       
       // Get detailed fee information
       const { data: feeDetails, error: feeError } = await db.getStudentFeeDetails(student.id);
@@ -182,6 +195,7 @@ export const ParentPortal: React.FC = () => {
       }
       
       if (feeDetails) {
+        console.log('Fee details loaded:', feeDetails);
         setStudentDetails(feeDetails);
         // Update URL with student ID
         updateURL({
@@ -296,8 +310,8 @@ export const ParentPortal: React.FC = () => {
   const getStatusBadge = (quarter: any) => {
     if (quarter.balance === 0) {
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <CheckCircle className="w-3 h-3 mr-1" />
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+          <CheckCircle className="w-4 h-4 mr-1" />
           Paid
         </span>
       );
@@ -305,16 +319,16 @@ export const ParentPortal: React.FC = () => {
     
     if (quarter.is_overdue) {
       return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          <AlertCircle className="w-3 h-3 mr-1" />
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+          <AlertCircle className="w-4 h-4 mr-1" />
           Overdue
         </span>
       );
     }
     
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-        <Clock className="w-3 h-3 mr-1" />
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+        <Clock className="w-4 h-4 mr-1" />
         Pending
       </span>
     );
@@ -329,18 +343,23 @@ export const ParentPortal: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <div className="bg-blue-600 text-white py-12">
-        <div className="max-w-4xl mx-auto px-4">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-4">J.R. Preparatory School</h1>
-              <p className="text-blue-100 text-lg">Parent Fee Portal - Check and pay your child's school fees online</p>
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                <BookOpen className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">J.R. Preparatory School</h1>
+                <p className="text-gray-600">Parent Fee Portal - Check and pay your child's school fees online</p>
+              </div>
             </div>
             <a 
               href="/admin" 
-              className="px-4 py-2 bg-blue-700 hover:bg-blue-800 rounded-lg transition-colors text-sm"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
             >
               Admin Login
             </a>
@@ -348,19 +367,26 @@ export const ParentPortal: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {!studentDetails ? (
           /* Search Form */
-          <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Search Student</h2>
+          <div className="bg-white rounded-2xl shadow-lg border p-8 mb-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Find Your Child's Fee Details</h2>
+              <p className="text-gray-600">Enter your child's admission number or name to view fee information</p>
+            </div>
             
-            <form onSubmit={handleSearch} className="space-y-4">
+            <form onSubmit={handleSearch} className="space-y-6">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="sm:w-48">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search By</label>
                   <select
                     value={searchType}
                     onChange={(e) => setSearchType(e.target.value as 'admission' | 'name')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                   >
                     <option value="admission">Admission Number</option>
                     <option value="name">Student Name</option>
@@ -368,126 +394,175 @@ export const ParentPortal: React.FC = () => {
                 </div>
                 
                 <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {searchType === 'admission' ? 'Admission Number' : 'Student Name'}
+                  </label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder={
                         searchType === 'admission' 
-                          ? 'Enter admission number (e.g., 2024001)' 
+                          ? 'Enter admission number (e.g., JRO0016)' 
                           : 'Enter student name'
                       }
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
                       required
                     />
                   </div>
                 </div>
                 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                  <span>{loading ? 'Searching...' : 'Search'}</span>
-                </button>
+                <div className="sm:w-auto">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full sm:w-auto px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2 font-medium"
+                  >
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    ) : (
+                      <Search className="w-5 h-5" />
+                    )}
+                    <span>{loading ? 'Searching...' : 'Search'}</span>
+                  </button>
+                </div>
               </div>
             </form>
 
             {error && (
-              <div className="mt-4 flex items-center space-x-2 text-red-600 bg-red-50 p-3 rounded-lg">
-                <AlertCircle className="w-5 h-5" />
-                <span className="text-sm">{error}</span>
+              <div className="mt-6 flex items-start space-x-3 text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Search Error</p>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
               </div>
             )}
+
+            {/* Search Tips */}
+            <div className="mt-8 bg-blue-50 rounded-xl p-6">
+              <h3 className="font-medium text-blue-900 mb-3">Search Tips:</h3>
+              <ul className="text-sm text-blue-800 space-y-2">
+                <li>• For admission number: Enter the complete number (e.g., JRO0016, not jro0016)</li>
+                <li>• For student name: Enter the full name or part of it</li>
+                <li>• Make sure the student is currently active in the system</li>
+                <li>• Contact the school office if you're having trouble finding your child's record</li>
+              </ul>
+            </div>
           </div>
         ) : (
           /* Student Details */
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Back Button */}
             <button
               onClick={resetSearch}
-              className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors"
+              className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors font-medium"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5" />
               <span>Search Another Student</span>
             </button>
 
-            {/* Student Info */}
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Name</p>
-                  <p className="font-medium">{studentDetails.student.name}</p>
+            {/* Student Info Card */}
+            <div className="bg-white rounded-2xl shadow-lg border p-8">
+              <div className="flex items-center space-x-6 mb-6">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-8 h-8 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Admission Number</p>
-                  <p className="font-medium">{studentDetails.student.admission_no}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Class</p>
-                  <p className="font-medium">
-                    {studentDetails.student.class?.class_name}
+                  <h2 className="text-2xl font-bold text-gray-900">{studentDetails.student.name}</h2>
+                  <p className="text-gray-600 text-lg">
+                    Admission No: {studentDetails.student.admission_no} • 
+                    Class: {studentDetails.student.class?.class_name}
                     {studentDetails.student.section && ` - ${studentDetails.student.section}`}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Parent Contact</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {studentDetails.student.parent_contact || 'Not provided'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Parent Email</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {studentDetails.student.parent_email || 'Not provided'}
+                  </p>
+                </div>
+                <div className="bg-green-50 rounded-xl p-4">
+                  <p className="text-sm font-medium text-green-600 mb-1">Concession</p>
+                  <p className="text-lg font-semibold text-green-700">
+                    {studentDetails.student.concession > 0 
+                      ? `₹${studentDetails.student.concession.toLocaleString()}` 
+                      : 'None'}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Fee Details by Quarter */}
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Fee Details by Quarter</h3>
+              
               {studentDetails.quarters.map((quarter) => (
-                <div key={quarter.quarter.id} className="bg-white rounded-xl shadow-sm border">
-                  <div className="p-6 border-b">
+                <div key={quarter.quarter.id} className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900">
-                          {quarter.quarter.quarter_name}
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          Due Date: {format(new Date(quarter.quarter.due_date), 'MMM dd, yyyy')}
-                        </p>
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                          <Calendar className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-bold text-gray-900">
+                            {quarter.quarter.quarter_name}
+                          </h4>
+                          <p className="text-gray-600">
+                            Due Date: {format(new Date(quarter.quarter.due_date), 'MMM dd, yyyy')}
+                          </p>
+                        </div>
                       </div>
                       {getStatusBadge(quarter)}
                     </div>
                   </div>
                   
                   <div className="p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div>
-                        <p className="text-sm text-gray-600">Base Fee</p>
-                        <p className="text-lg font-semibold">₹{quarter.base_fee.toLocaleString()}</p>
+                    {/* Fee Breakdown */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-600 mb-1">Base Fee</p>
+                        <p className="text-2xl font-bold text-gray-900">₹{quarter.base_fee.toLocaleString()}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Extra Charges</p>
-                        <p className="text-lg font-semibold">₹{quarter.extra_charges_amount.toLocaleString()}</p>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-600 mb-1">Extra Charges</p>
+                        <p className="text-2xl font-bold text-blue-600">₹{quarter.extra_charges_amount.toLocaleString()}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Late Fee</p>
-                        <p className="text-lg font-semibold text-red-600">₹{quarter.late_fee.toLocaleString()}</p>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-600 mb-1">Late Fee</p>
+                        <p className="text-2xl font-bold text-red-600">₹{quarter.late_fee.toLocaleString()}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Amount Due</p>
-                        <p className="text-xl font-bold text-blue-600">₹{quarter.balance.toLocaleString()}</p>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-600 mb-1">Amount Due</p>
+                        <p className="text-3xl font-bold text-orange-600">₹{quarter.balance.toLocaleString()}</p>
                       </div>
                     </div>
 
                     {/* Payment History */}
                     {quarter.transactions.length > 0 && (
-                      <div className="mb-6">
-                        <h5 className="font-medium text-gray-900 mb-3">Payment History</h5>
-                        <div className="space-y-2">
+                      <div className="mb-8">
+                        <h5 className="font-bold text-gray-900 mb-4 flex items-center">
+                          <Receipt className="w-5 h-5 mr-2" />
+                          Payment History
+                        </h5>
+                        <div className="space-y-3">
                           {quarter.transactions.map((transaction) => (
-                            <div key={transaction.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div key={transaction.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                               <div>
-                                <p className="font-medium">₹{transaction.amount_paid.toLocaleString()}</p>
+                                <p className="font-semibold text-gray-900">₹{transaction.amount_paid.toLocaleString()}</p>
                                 <p className="text-sm text-gray-600">
                                   {format(new Date(transaction.payment_date), 'MMM dd, yyyy')} • 
                                   Receipt: {transaction.receipt_no} • 
@@ -496,10 +571,10 @@ export const ParentPortal: React.FC = () => {
                               </div>
                               <button 
                                 onClick={() => handleViewReceipt(transaction, quarter)}
-                                className="text-blue-600 hover:text-blue-700 p-1 flex items-center space-x-1"
+                                className="text-blue-600 hover:text-blue-700 p-2 flex items-center space-x-2 bg-blue-50 rounded-lg transition-colors"
                               >
                                 <Eye className="w-4 h-4" />
-                                <span className="text-sm">View Receipt</span>
+                                <span className="text-sm font-medium">View Receipt</span>
                               </button>
                             </div>
                           ))}
@@ -508,20 +583,25 @@ export const ParentPortal: React.FC = () => {
                     )}
 
                     {/* Actions */}
-                    {quarter.balance > 0 && (
-                      <div className="flex flex-col sm:flex-row gap-3">
+                    {quarter.balance > 0 ? (
+                      <div className="flex flex-col sm:flex-row gap-4">
                         <button
                           onClick={() => handlePayOnline(quarter)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center space-x-3"
                         >
-                          <Smartphone className="w-5 h-5" />
+                          <Smartphone className="w-6 h-6" />
                           <span>Pay Online - ₹{quarter.balance.toLocaleString()}</span>
                         </button>
                         
-                        <button className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
-                          <Download className="w-4 h-4" />
+                        <button className="px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center space-x-3 font-medium">
+                          <Download className="w-5 h-5" />
                           <span>Download Statement</span>
                         </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                        <p className="text-xl font-bold text-green-700">All fees paid for this quarter!</p>
                       </div>
                     )}
                   </div>
@@ -532,18 +612,24 @@ export const ParentPortal: React.FC = () => {
         )}
 
         {/* Help Section */}
-        <div className="mt-12 bg-blue-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">Need Help?</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="font-medium text-blue-800 mb-1">School Office</p>
-              <p className="text-blue-700">Phone: +91 98765 43210</p>
-              <p className="text-blue-700">Email: office@jrprep.edu</p>
+        <div className="mt-12 bg-white rounded-2xl shadow-lg border p-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">Need Help?</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+              </div>
+              <p className="font-bold text-gray-900 mb-2">School Office</p>
+              <p className="text-gray-600">Phone: +91 98765 43210</p>
+              <p className="text-gray-600">Email: office@jrprep.edu</p>
             </div>
-            <div>
-              <p className="font-medium text-blue-800 mb-1">Office Hours</p>
-              <p className="text-blue-700">Monday to Friday: 8:00 AM - 4:00 PM</p>
-              <p className="text-blue-700">Saturday: 8:00 AM - 12:00 PM</p>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="font-bold text-gray-900 mb-2">Office Hours</p>
+              <p className="text-gray-600">Monday to Friday: 8:00 AM - 4:00 PM</p>
+              <p className="text-gray-600">Saturday: 8:00 AM - 12:00 PM</p>
             </div>
           </div>
         </div>
