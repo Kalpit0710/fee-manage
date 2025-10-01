@@ -20,6 +20,7 @@ import { db, supabase } from '../lib/supabase';
 import { format, isAfter } from 'date-fns';
 import { PaymentGateway } from './PaymentGateway';
 import { ReceiptGenerator } from './ReceiptGenerator';
+import { useNotification } from './NotificationSystem';
 
 interface PaymentDetails {
   student: Student;
@@ -35,6 +36,7 @@ interface PaymentDetails {
 }
 
 export const ParentPortal: React.FC = () => {
+  const { showSuccess, showError } = useNotification();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
@@ -271,6 +273,11 @@ export const ParentPortal: React.FC = () => {
         setShowReceipt(true);
         setShowPayment(false);
         
+        showSuccess(
+          'Payment Successful',
+          `Payment of ₹${paymentData.amount} completed successfully!`
+        );
+        
         // Refresh student details
         if (studentDetails) {
           const { data: updatedDetails } = await db.getStudentFeeDetails(studentDetails.student.id);
@@ -281,13 +288,19 @@ export const ParentPortal: React.FC = () => {
       }
     } catch (error) {
       console.error('Error recording payment:', error);
-      alert('Payment was successful but there was an error recording it. Please contact the school office.');
+      showError(
+        'Payment Recording Error',
+        'Payment was successful but there was an error recording it. Please contact the school office.'
+      );
     }
   };
 
   const handlePaymentFailure = (error: any) => {
     console.error('Payment failed:', error);
-    alert('Payment failed. Please try again or contact the school office.');
+    showError(
+      'Payment Failed',
+      'Payment failed. Please try again or contact the school office.'
+    );
     setShowPayment(false);
   };
 

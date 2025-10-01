@@ -15,9 +15,11 @@ import { Student, Quarter, StudentFeeDetails, PaymentRequest } from '../types';
 import { db, supabase } from '../lib/supabase';
 import { format, isAfter } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from './NotificationSystem';
 
 export const FeeCollection: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'admission' | 'name'>('admission');
   const [loading, setLoading] = useState(false);
@@ -167,7 +169,10 @@ export const FeeCollection: React.FC = () => {
       const { data: transaction } = await db.createTransaction(transactionData);
       
       if (transaction) {
-        alert(`Payment successful! Receipt No: ${transaction.receipt_no}`);
+        showSuccess(
+          'Payment Successful', 
+          `Payment collected successfully! Receipt No: ${transaction.receipt_no}`
+        );
         setShowPaymentModal(false);
         
         // Refresh student details
@@ -181,7 +186,7 @@ export const FeeCollection: React.FC = () => {
 
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Payment failed. Please try again.');
+      showError('Payment Failed', 'Failed to process payment. Please try again.');
     } finally {
       setProcessingPayment(false);
     }

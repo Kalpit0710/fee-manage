@@ -22,6 +22,7 @@ import {
 import { User as UserType } from '../types';
 import { db, supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from './NotificationSystem';
 
 interface SchoolSettings {
   school_name: string;
@@ -49,6 +50,7 @@ interface NotificationSettings {
 
 export const Settings: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [activeTab, setActiveTab] = useState<'school' | 'users' | 'notifications' | 'backup' | 'security'>('school');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -101,10 +103,10 @@ export const Settings: React.FC = () => {
       // In a real implementation, you would save to a settings table
       // For now, we'll just simulate the save
       await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('School settings saved successfully!');
+      showSuccess('Settings Saved', 'School settings have been saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
+      showError('Save Failed', 'Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -115,10 +117,10 @@ export const Settings: React.FC = () => {
     try {
       // In a real implementation, you would save to a settings table
       await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('Notification settings saved successfully!');
+      showSuccess('Settings Saved', 'Notification settings have been saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
+      showError('Save Failed', 'Failed to save notification settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -129,10 +131,10 @@ export const Settings: React.FC = () => {
     try {
       // Simulate backup process
       await new Promise(resolve => setTimeout(resolve, 2000));
-      alert('Backup completed successfully!');
+      showSuccess('Backup Complete', 'System backup has been created successfully');
     } catch (error) {
       console.error('Error creating backup:', error);
-      alert('Error creating backup. Please try again.');
+      showError('Backup Failed', 'Failed to create backup. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -143,10 +145,10 @@ export const Settings: React.FC = () => {
     try {
       // Simulate restore process
       await new Promise(resolve => setTimeout(resolve, 3000));
-      alert('Data restored successfully!');
+      showSuccess('Restore Complete', 'Data has been restored successfully');
     } catch (error) {
       console.error('Error restoring data:', error);
-      alert('Error restoring data. Please try again.');
+      showError('Restore Failed', 'Failed to restore data. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -693,11 +695,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSave }) => {
         const { error: profileError } = await supabase
           .from('users')
           .insert({
-            id: authData.user.id,
+       showSuccess('User Created', `User ${formData.name} has been created successfully`);
             name: formData.name,
             email: formData.email,
             role: formData.role
-          });
+       showError('Create Failed', 'Failed to create user. Please try again.');
 
         if (profileError) throw profileError;
       }
@@ -827,11 +829,11 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave }) 
 
     try {
       await db.updateUser(user.id, formData);
-      alert('User updated successfully!');
+      showSuccess('User Updated', `User ${formData.name} has been updated successfully`);
       onSave();
     } catch (error) {
       console.error('Error updating user:', error);
-      alert('Error updating user. Please try again.');
+      showError('Update Failed', 'Failed to update user. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import { Transaction, Student, Quarter, Class } from '../types';
 import { db } from '../lib/supabase';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from './NotificationSystem';
 
 interface TransactionFilters {
   dateFrom: string;
@@ -18,6 +19,7 @@ interface TransactionFilters {
 
 export const TransactionManagement: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [quarters, setQuarters] = useState<Quarter[]>([]);
@@ -128,10 +130,10 @@ export const TransactionManagement: React.FC = () => {
       try {
         await db.deleteTransaction(transaction.id);
         loadTransactions();
-        alert('Transaction deleted successfully');
+       showSuccess('Transaction Deleted', 'Transaction has been successfully deleted');
       } catch (error) {
         console.error('Error deleting transaction:', error);
-        alert('Error deleting transaction. Please try again.');
+       showError('Delete Failed', 'Failed to delete transaction. Please try again.');
       }
     }
   };
@@ -508,11 +510,11 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
         cheque_date: formData.cheque_date || null,
         updated_at: new Date().toISOString()
       });
-      alert('Transaction updated successfully');
+      showSuccess('Transaction Updated', 'Transaction has been successfully updated');
       onSave();
     } catch (error) {
       console.error('Error updating transaction:', error);
-      alert('Error updating transaction. Please try again.');
+      showError('Update Failed', 'Failed to update transaction. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -717,11 +719,11 @@ const RefundModal: React.FC<RefundModalProps> = ({
         notes: `${transaction.notes || ''}\nRefunded: ₹${refundAmount} - ${refundReason}`.trim()
       });
 
-      alert('Refund processed successfully');
+      showSuccess('Refund Processed', `Refund of ₹${refundAmount} has been processed successfully`);
       onSave();
     } catch (error) {
       console.error('Error processing refund:', error);
-      alert('Error processing refund. Please try again.');
+      showError('Refund Failed', 'Failed to process refund. Please try again.');
     } finally {
       setLoading(false);
     }

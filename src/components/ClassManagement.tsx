@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import { Class } from '../types';
 import { db } from '../lib/supabase';
+import { useNotification } from './NotificationSystem';
 
 export const ClassManagement: React.FC = () => {
+  const { showSuccess, showError } = useNotification();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,8 +42,13 @@ export const ClassManagement: React.FC = () => {
 
   const handleDeleteClass = async (classItem: Class) => {
     if (window.confirm(`Are you sure you want to delete ${classItem.class_name}?`)) {
-      await db.deleteClass(classItem.id);
-      loadClasses();
+      try {
+        await db.deleteClass(classItem.id);
+        showSuccess('Class Deleted', `${classItem.class_name} has been successfully deleted`);
+        loadClasses();
+      } catch (error) {
+        showError('Delete Failed', 'Failed to delete class. Please try again.');
+      }
     }
   };
 
@@ -172,12 +179,15 @@ const ClassModal: React.FC<ClassModalProps> = ({
     try {
       if (classItem) {
         await db.updateClass(classItem.id, formData);
+        showSuccess('Class Updated', `${formData.class_name} has been successfully updated`);
       } else {
         await db.createClass(formData);
+        showSuccess('Class Added', `${formData.class_name} has been successfully added`);
       }
       onSave();
     } catch (error) {
       console.error('Error saving class:', error);
+      showError('Save Failed', 'Failed to save class. Please try again.');
     } finally {
       setLoading(false);
     }
