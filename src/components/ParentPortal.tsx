@@ -363,12 +363,15 @@ export const ParentPortal: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-7 h-7 text-white" />
-              </div>
+              <img 
+                src="/Colorful Fun Illustration Kids Summer Camp Activity Flyer.png" 
+                alt="J.R. Preparatory School Logo" 
+                className="w-16 h-16 rounded-xl object-contain bg-white p-2 shadow-md"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">J.R. Preparatory School</h1>
-                <p className="text-gray-600">Parent Fee Portal - Check and pay your child's school fees online</p>
+                <p className="text-gray-600">Puranpur - Parent Fee Portal</p>
+                <p className="text-sm text-gray-500">Check and pay your child's school fees online</p>
               </div>
             </div>
             <a 

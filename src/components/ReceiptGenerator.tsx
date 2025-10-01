@@ -179,11 +179,16 @@ export const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
           <div ref={receiptRef} className="receipt bg-white">
             {/* Header */}
             <div className="header text-center border-b-2 border-gray-800 pb-6 mb-6">
+              <img 
+                src="/Colorful Fun Illustration Kids Summer Camp Activity Flyer.png" 
+                alt="J.R. Preparatory School Logo" 
+                className="w-20 h-20 mx-auto mb-4 object-contain"
+              />
               <h1 className="school-name text-3xl font-bold text-blue-600 mb-2">
                 J.R. Preparatory School
               </h1>
               <div className="school-address text-gray-600">
-                <p>123 Education Street, Knowledge City - 560001</p>
+                <p>Puranpur, Uttar Pradesh - 262122</p>
                 <p>Phone: +91 98765 43210 | Email: office@jrprep.edu</p>
                 <p>Website: www.jrprep.edu</p>
               </div>

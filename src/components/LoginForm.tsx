@@ -27,11 +27,13 @@ export const LoginForm: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="w-8 h-8 text-white" />
-          </div>
+          <img 
+            src="/Colorful Fun Illustration Kids Summer Camp Activity Flyer.png" 
+            alt="J.R. Preparatory School Logo" 
+            className="w-20 h-20 rounded-xl mx-auto mb-4 object-contain bg-white p-2 shadow-md"
+          />
           <h1 className="text-2xl font-bold text-gray-900">J.R. Preparatory School</h1>
-          <p className="text-gray-600 mt-2">Fee Management System</p>
+          <p className="text-gray-600 mt-2">Puranpur - Fee Management System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

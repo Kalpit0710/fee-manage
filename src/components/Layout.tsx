@@ -53,12 +53,14 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
+              <img 
+                src="/Colorful Fun Illustration Kids Summer Camp Activity Flyer.png" 
+                alt="J.R. Preparatory School Logo" 
+                className="w-12 h-12 rounded-lg object-contain bg-white p-1"
+              />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">J.R. Preparatory School</h1>
-                <p className="text-sm text-gray-600">Fee Management System</p>
+                <p className="text-sm text-gray-600">Puranpur - Fee Management System</p>
               </div>
             </div>
             

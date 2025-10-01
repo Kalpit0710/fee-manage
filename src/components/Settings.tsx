@@ -21,8 +21,8 @@ export default function Settings() {
   const [message, setMessage] = useState('');
   
   const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>({
-    school_name: 'J. R. Preparatory School',
-    school_address: '123 Education Street, City, State - 123456',
+    school_name: 'J.R. Preparatory School',
+    school_address: 'Puranpur, Uttar Pradesh - 262122',
     school_phone: '+91 98765 43210',
     school_email: 'info@jrprep.edu.in',
     academic_year: '2025-26',
