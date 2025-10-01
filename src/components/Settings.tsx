@@ -667,6 +667,7 @@ interface AddUserModalProps {
 }
 
 const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSave }) => {
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -695,20 +696,19 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSave }) => {
         const { error: profileError } = await supabase
           .from('users')
           .insert({
-       showSuccess('User Created', `User ${formData.name} has been created successfully`);
             name: formData.name,
             email: formData.email,
             role: formData.role
-       showError('Create Failed', 'Failed to create user. Please try again.');
-
+          });
+          });
         if (profileError) throw profileError;
       }
 
-      alert('User created successfully!');
+      showSuccess('User Created', `User ${formData.name} has been created successfully`);
       onSave();
     } catch (error) {
       console.error('Error creating user:', error);
-      alert('Error creating user. Please try again.');
+      showError('Create Failed', 'Failed to create user. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -815,6 +815,7 @@ interface EditUserModalProps {
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSave }) => {
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     name: user.name,
     email: user.email,
