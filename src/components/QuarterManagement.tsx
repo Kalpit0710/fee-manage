@@ -18,7 +18,7 @@ export const QuarterManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingQuarter, setEditingQuarter] = useState<Quarter | null>(null);
-  const [selectedYear, setSelectedYear] = useState('2024-25');
+  const [selectedYear, setSelectedYear] = useState('2025-26');
 
   useEffect(() => {
     loadQuarters();
@@ -65,7 +65,7 @@ export const QuarterManagement: React.FC = () => {
     }
   };
 
-  const academicYears = ['2023-24', '2024-25', '2025-26', '2026-27'];
+  const academicYears = ['2024-25', '2025-26', '2026-27', '2027-28'];
 
   return (
     <div className="space-y-6">
