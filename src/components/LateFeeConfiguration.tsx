@@ -25,7 +25,7 @@ export const LateFeeConfiguration: React.FC = () => {
   const [configs, setConfigs] = useState<LateFeeConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [selectedYear, setSelectedYear] = useState('2024-25');
+  const [selectedYear, setSelectedYear] = useState('2025-26');
 
   useEffect(() => {
     loadData();
@@ -104,7 +104,7 @@ export const LateFeeConfiguration: React.FC = () => {
     return Math.min(lateFee, config.max_late_fee);
   };
 
-  const academicYears = ['2023-24', '2024-25', '2025-26', '2026-27'];
+  const academicYears = ['2024-25', '2025-26', '2026-27', '2027-28'];
 
   return (
     <div className="space-y-6">

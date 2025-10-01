@@ -94,7 +94,7 @@ export const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
         heightLeft -= pageHeight;
       }
       
-      pdf.save(`Receipt_${receiptData.transaction.receipt_no}.pdf`);
+      pdf.save(`Receipt_${receiptData.transaction.receipt_no}_${new Date().getFullYear()}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');

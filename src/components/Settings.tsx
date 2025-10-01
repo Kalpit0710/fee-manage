@@ -25,7 +25,7 @@ export default function Settings() {
     school_address: '123 Education Street, City, State - 123456',
     school_phone: '+91 98765 43210',
     school_email: 'info@jrprep.edu.in',
-    academic_year: '2024-25',
+    academic_year: '2025-26',
     late_fee_percentage: 5,
     late_fee_flat: 50,
     receipt_prefix: 'JRP'

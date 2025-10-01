@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Calendar,
-  Clock,
-  AlertTriangle,
-  Save,
-  X
-} from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Calendar, Clock, AlertTriangle, Save, X } from 'lucide-react';
 import { Quarter } from '../types';
 import { db } from '../lib/supabase';
 import { format } from 'date-fns';
