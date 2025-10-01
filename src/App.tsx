@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './components/NotificationSystem';
 import { Layout } from './components/Layout';
 import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './components/Dashboard';
@@ -84,14 +85,16 @@ const AdminApp: React.FC = () => {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<ParentPortal />} />
-        <Route path="/admin" element={<AuthProvider><Navigate to="/admin/dashboard" replace /></AuthProvider>} />
-        <Route path="/admin/:section" element={<AuthProvider><AdminApp /></AuthProvider>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+    <NotificationProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<ParentPortal />} />
+          <Route path="/admin" element={<AuthProvider><Navigate to="/admin/dashboard" replace /></AuthProvider>} />
+          <Route path="/admin/:section" element={<AuthProvider><AdminApp /></AuthProvider>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </NotificationProvider>
   );
 }
 
