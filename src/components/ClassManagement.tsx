@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  BookOpen,
-  DollarSign,
-  Save,
-  X
-} from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, BookOpen, DollarSign, Save, X } from 'lucide-react';
 import { Class } from '../types';
 import { db } from '../lib/supabase';
 import { useNotification } from './NotificationSystem';

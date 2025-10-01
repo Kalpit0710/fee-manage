@@ -1,21 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Download,
-  Upload,
-  Filter,
-  X
-} from 'lucide-react';
+import { Plus, Search, CreditCard as Edit, Trash2, Download, Upload, Filter, X } from 'lucide-react';
 import { Student, Class } from '../types';
 import { db } from '../lib/supabase';
-import { CSVManager } from './CSVManager';
-import { useNotification } from './NotificationSystem';
 
 export const StudentManagement: React.FC = () => {
-  const { showSuccess, showError } = useNotification();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +11,6 @@ export const StudentManagement: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [showCSVManager, setShowCSVManager] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -58,13 +45,8 @@ export const StudentManagement: React.FC = () => {
 
   const handleDeleteStudent = async (student: Student) => {
     if (window.confirm(`Are you sure you want to delete ${student.name}?`)) {
-      try {
-        await db.updateStudent(student.id, { is_active: false });
-        showSuccess('Student Deleted', `${student.name} has been successfully deleted`);
-        loadData();
-      } catch (error) {
-        showError('Delete Failed', 'Failed to delete student. Please try again.');
-      }
+      await db.updateStudent(student.id, { is_active: false });
+      loadData();
     }
   };
 
@@ -72,64 +54,6 @@ export const StudentManagement: React.FC = () => {
     setSearchTerm('');
     setSelectedClass('');
   };
-
-  const handleCSVImport = async (csvData: any[]): Promise<{ success: number; errors: string[] }> => {
-    const errors: string[] = [];
-    let successCount = 0;
-
-    for (const row of csvData) {
-      try {
-        // Find class by name
-        const studentClass = classes.find(c => 
-          c.class_name.toLowerCase() === row['Class'].toLowerCase()
-        );
-
-        if (!studentClass) {
-          errors.push(`Class "${row['Class']}" not found for student ${row['Student Name']}`);
-          continue;
-        }
-
-        const studentData = {
-          admission_no: row['Admission Number'],
-          name: row['Student Name'],
-          class_id: studentClass.id,
-          section: row['Section'] || '',
-          parent_contact: row['Parent Contact'] || '',
-          parent_email: row['Parent Email'] || '',
-          concession: parseFloat(row['Concession Amount']) || 0,
-        };
-
-        await db.createStudent(studentData);
-        successCount++;
-      } catch (error) {
-        errors.push(`Failed to import student ${row['Student Name']}: ${error}`);
-      }
-    }
-
-    loadData();
-    return { success: successCount, errors };
-  };
-
-  const csvColumns = [
-    { key: 'admission_no', label: 'Admission Number', required: true },
-    { key: 'name', label: 'Student Name', required: true },
-    { key: 'class_name', label: 'Class', required: true },
-    { key: 'section', label: 'Section' },
-    { key: 'parent_contact', label: 'Parent Contact', type: 'phone' as const },
-    { key: 'parent_email', label: 'Parent Email', type: 'email' as const },
-    { key: 'concession', label: 'Concession Amount', type: 'number' as const },
-  ];
-
-  const exportData = students.map(student => ({
-    'Admission Number': student.admission_no,
-    'Student Name': student.name,
-    'Class': student.class?.class_name || '',
-    'Section': student.section || '',
-    'Parent Contact': student.parent_contact || '',
-    'Parent Email': student.parent_email || '',
-    'Concession Amount': student.concession || 0,
-    'Status': student.is_active ? 'Active' : 'Inactive'
-  }));
 
   return (
     <div className="space-y-6">
@@ -140,12 +64,14 @@ export const StudentManagement: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => setShowCSVManager(!showCSVManager)}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2"
-          >
+          <button className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
             <Upload className="w-4 h-4" />
-            <span>CSV Manager</span>
+            <span>Import</span>
+          </button>
+          
+          <button className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
+            <Download className="w-4 h-4" />
+            <span>Export</span>
           </button>
           
           <button
@@ -157,27 +83,6 @@ export const StudentManagement: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* CSV Manager */}
-      {showCSVManager && (
-        <CSVManager
-          title="Students"
-          columns={csvColumns}
-          data={exportData}
-          onImport={handleCSVImport}
-          templateData={[
-            {
-              'Admission Number': 'JRO0001',
-              'Student Name': 'John Doe',
-              'Class': 'Class 1',
-              'Section': 'A',
-              'Parent Contact': '+91 9876543210',
-              'Parent Email': 'parent@example.com',
-              'Concession Amount': '500'
-            }
-          ]}
-        />
-      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg border p-4">
@@ -361,7 +266,6 @@ const StudentModal: React.FC<StudentModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     admission_no: student?.admission_no || '',
     name: student?.name || '',
@@ -381,15 +285,12 @@ const StudentModal: React.FC<StudentModalProps> = ({
     try {
       if (student) {
         await db.updateStudent(student.id, formData);
-        showSuccess('Student Updated', `${formData.name} has been successfully updated`);
       } else {
         await db.createStudent(formData);
-        showSuccess('Student Added', `${formData.name} has been successfully added`);
       }
       onSave();
     } catch (error) {
       console.error('Error saving student:', error);
-      showError('Save Failed', 'Failed to save student. Please try again.');
     } finally {
       setLoading(false);
     }
