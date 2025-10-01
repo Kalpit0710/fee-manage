@@ -15,7 +15,7 @@ import { LateFeeConfiguration } from './components/LateFeeConfiguration';
 import { Reports } from './components/Reports';
 import { ParentPortal } from './components/ParentPortal';
 import { TransactionManagement } from './components/TransactionManagement';
-import { Settings } from './components/Settings';
+import Settings from './components/Settings';
 
 const AdminSection: React.FC = () => {
   const { section } = useParams<{ section: string }>();
