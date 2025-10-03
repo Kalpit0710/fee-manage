@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Download, 
+import {
+  Download,
   Filter,
   Calendar,
   Users,
@@ -10,11 +10,14 @@ import {
   FileText,
   BarChart3,
   TrendingUp,
-  Eye
+  Eye,
+  Receipt
 } from 'lucide-react';
 import { Transaction, Student, Class, Quarter } from '../types';
 import { db } from '../lib/supabase';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { ReceiptGenerator } from './ReceiptGenerator';
+import { useNotification } from './NotificationSystem';
 
 interface ReportFilters {
   dateFrom: string;
@@ -51,13 +54,16 @@ interface ReportData {
 
 export const Reports: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  
+  const { showError } = useNotification();
+
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [quarters, setQuarters] = useState<Quarter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'defaulters'>(
     (searchParams.get('tab') as 'overview' | 'transactions' | 'defaulters') || 'overview'
   );
@@ -198,6 +204,40 @@ export const Reports: React.FC = () => {
       console.error('Error generating report:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewReceipt = async (transaction: Transaction) => {
+    try {
+      const { data: student } = await db.getStudent(transaction.student_id);
+      const { data: quarter } = await db.getQuarter(transaction.quarter_id);
+      const { data: feeDetails } = await db.getStudentFeeDetails(transaction.student_id);
+
+      if (!student || !quarter) {
+        showError('Error', 'Unable to load transaction details');
+        return;
+      }
+
+      const quarterData = feeDetails?.quarters.find(q => q.quarter.id === transaction.quarter_id);
+
+      setReceiptData({
+        transaction,
+        student,
+        quarter,
+        breakdown: {
+          baseFee: quarterData?.base_fee || 0,
+          extraCharges: quarterData?.extra_charges_amount || 0,
+          lateFee: transaction.late_fee || 0,
+          concession: student.concession_amount || 0,
+          total: transaction.amount_paid
+        },
+        paymentId: transaction.payment_reference
+      });
+
+      setShowReceipt(true);
+    } catch (error) {
+      console.error('Error loading receipt:', error);
+      showError('Error', 'Failed to load receipt. Please try again.');
     }
   };
 
@@ -509,8 +549,12 @@ export const Reports: React.FC = () => {
                               </span>
                             </td>
                             <td className="py-3">
-                              <button className="text-blue-600 hover:text-blue-700 p-1">
-                                <Eye className="w-4 h-4" />
+                              <button
+                                onClick={() => handleViewReceipt(transaction)}
+                                className="text-green-600 hover:text-green-700 p-1"
+                                title="View Receipt"
+                              >
+                                <Receipt className="w-4 h-4" />
                               </button>
                             </td>
                           </tr>
@@ -534,6 +578,15 @@ export const Reports: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Receipt Generator */}
+      {showReceipt && receiptData && (
+        <ReceiptGenerator
+          receiptData={receiptData}
+          onClose={() => setShowReceipt(false)}
+          isParentView={false}
+        />
+      )}
     </div>
   );
 };
