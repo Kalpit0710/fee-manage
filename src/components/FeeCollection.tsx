@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Search, 
-  CreditCard, 
+import {
+  Search,
+  CreditCard,
   Calculator,
   Receipt,
   User,
@@ -16,6 +16,7 @@ import { db, supabase } from '../lib/supabase';
 import { format, isAfter } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from './NotificationSystem';
+import { ReceiptGenerator } from './ReceiptGenerator';
 
 export const FeeCollection: React.FC = () => {
   const { user } = useAuth();
@@ -38,6 +39,8 @@ export const FeeCollection: React.FC = () => {
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,16 +170,33 @@ export const FeeCollection: React.FC = () => {
       };
 
       const { data: transaction } = await db.createTransaction(transactionData);
-      
-      if (transaction) {
-        showSuccess(
-          'Payment Successful', 
-          `Payment collected successfully! Receipt No: ${transaction.receipt_no}`
-        );
-        setShowPaymentModal(false);
-        
-        // Refresh student details
-        if (studentDetails) {
+
+      if (transaction && studentDetails) {
+        const quarterData = studentDetails.quarters.find(q => q.quarter.id === selectedQuarter);
+
+        if (quarterData) {
+          setReceiptData({
+            transaction,
+            student: studentDetails.student,
+            quarter: quarterData.quarter,
+            breakdown: {
+              baseFee: quarterData.base_fee,
+              extraCharges: quarterData.extra_charges_amount,
+              lateFee: quarterData.late_fee,
+              concession: studentDetails.student.concession || 0,
+              total: transaction.amount_paid
+            },
+            paymentId: transaction.payment_reference
+          });
+
+          setShowPaymentModal(false);
+          setShowReceipt(true);
+
+          showSuccess(
+            'Payment Successful',
+            `Payment collected successfully! Receipt No: ${transaction.receipt_no}`
+          );
+
           const { data: updatedDetails } = await db.getStudentFeeDetails(studentDetails.student.id);
           if (updatedDetails) {
             setStudentDetails(updatedDetails);
@@ -398,6 +418,15 @@ export const FeeCollection: React.FC = () => {
           onSubmit={handlePaymentSubmit}
           onClose={() => setShowPaymentModal(false)}
           processing={processingPayment}
+        />
+      )}
+
+      {/* Receipt Generator */}
+      {showReceipt && receiptData && (
+        <ReceiptGenerator
+          receiptData={receiptData}
+          onClose={() => setShowReceipt(false)}
+          isParentView={false}
         />
       )}
     </div>
