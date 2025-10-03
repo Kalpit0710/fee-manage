@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, Download, CreditCard as Edit, Trash2, Eye, RefreshCw, Calendar, DollarSign, User, CreditCard, X, Save, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Download, CreditCard as Edit, Trash2, Eye, RefreshCw, Calendar, DollarSign, User, CreditCard, X, Save, AlertTriangle, Receipt } from 'lucide-react';
 import { Transaction, Student, Quarter, Class } from '../types';
 import { db } from '../lib/supabase';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from './NotificationSystem';
+import { ReceiptGenerator } from './ReceiptGenerator';
 
 interface TransactionFilters {
   dateFrom: string;
@@ -28,6 +29,8 @@ export const TransactionManagement: React.FC = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
   
   const [filters, setFilters] = useState<TransactionFilters>({
     dateFrom: '',
@@ -123,6 +126,40 @@ export const TransactionManagement: React.FC = () => {
   const handleRefundTransaction = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setShowRefundModal(true);
+  };
+
+  const handleViewReceipt = async (transaction: Transaction) => {
+    try {
+      const { data: student } = await db.getStudent(transaction.student_id);
+      const { data: quarter } = await db.getQuarter(transaction.quarter_id);
+      const { data: feeDetails } = await db.getStudentFeeDetails(transaction.student_id);
+
+      if (!student || !quarter) {
+        showError('Error', 'Unable to load transaction details');
+        return;
+      }
+
+      const quarterData = feeDetails?.quarters.find(q => q.quarter.id === transaction.quarter_id);
+
+      setReceiptData({
+        transaction,
+        student,
+        quarter,
+        breakdown: {
+          baseFee: quarterData?.base_fee || 0,
+          extraCharges: quarterData?.extra_charges_amount || 0,
+          lateFee: transaction.late_fee || 0,
+          concession: student.concession_amount || 0,
+          total: transaction.amount_paid
+        },
+        paymentId: transaction.payment_reference
+      });
+
+      setShowReceipt(true);
+    } catch (error) {
+      console.error('Error loading receipt:', error);
+      showError('Error', 'Failed to load receipt. Please try again.');
+    }
   };
 
   const handleDeleteTransaction = async (transaction: Transaction) => {
@@ -418,6 +455,13 @@ export const TransactionManagement: React.FC = () => {
                     <td className="p-4">
                       <div className="flex items-center space-x-2">
                         <button
+                          onClick={() => handleViewReceipt(transaction)}
+                          className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                          title="View Receipt"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleEditTransaction(transaction)}
                           className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
                           title="Edit Transaction"
@@ -471,6 +515,15 @@ export const TransactionManagement: React.FC = () => {
             setShowRefundModal(false);
             loadTransactions();
           }}
+        />
+      )}
+
+      {/* Receipt Generator */}
+      {showReceipt && receiptData && (
+        <ReceiptGenerator
+          receiptData={receiptData}
+          onClose={() => setShowReceipt(false)}
+          isParentView={false}
         />
       )}
     </div>

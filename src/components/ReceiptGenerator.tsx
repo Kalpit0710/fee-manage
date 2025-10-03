@@ -101,13 +101,18 @@ export const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
     if (!receiptToPrint) return;
 
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      alert('Please allow pop-ups to print the receipt');
+      return;
+    }
 
     const pageHeight = isParentView ? '297mm' : '148.5mm';
 
-    printWindow.document.write(`
+    const htmlContent = `
+      <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="UTF-8">
           <title>Receipt - ${receiptData.transaction.receipt_no}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -226,7 +231,9 @@ export const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
           ${receiptToPrint.innerHTML}
           <script>
             window.onload = function() {
-              window.print();
+              setTimeout(function() {
+                window.print();
+              }, 250);
               window.onafterprint = function() {
                 window.close();
               };
@@ -234,8 +241,10 @@ export const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
           </script>
         </body>
       </html>
-    `);
+    `;
 
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
 
