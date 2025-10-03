@@ -1,12 +1,11 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  LogOut, 
-  Users, 
-  CreditCard, 
-  BarChart3, 
-  Settings, 
-  BookOpen,
+import {
+  LogOut,
+  Users,
+  CreditCard,
+  BarChart3,
+  Settings,
   Calendar,
   Receipt,
   DollarSign,
@@ -31,7 +30,6 @@ export const Layout: React.FC<LayoutProps> = ({
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, roles: ['admin', 'cashier'] },
     { id: 'students', label: 'Students', icon: Users, roles: ['admin', 'cashier'] },
-    { id: 'classes', label: 'Classes', icon: BookOpen, roles: ['admin'] },
     { id: 'quarters', label: 'Quarters', icon: Calendar, roles: ['admin'] },
     { id: 'fee-structures', label: 'Fee Structures', icon: DollarSign, roles: ['admin'] },
     { id: 'extra-charges', label: 'Extra Charges', icon: Plus, roles: ['admin'] },

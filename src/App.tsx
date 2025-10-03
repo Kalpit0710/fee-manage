@@ -6,7 +6,6 @@ import { Layout } from './components/Layout';
 import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './components/Dashboard';
 import { StudentManagement } from './components/StudentManagement';
-import { ClassManagement } from './components/ClassManagement';
 import { QuarterManagement } from './components/QuarterManagement';
 import { FeeCollection } from './components/FeeCollection';
 import { FeeStructureManagement } from './components/FeeStructureManagement';
@@ -32,8 +31,6 @@ const AdminSection: React.FC = () => {
         return <Dashboard />;
       case 'students':
         return <StudentManagement />;
-      case 'classes':
-        return <ClassManagement />;
       case 'quarters':
         return <QuarterManagement />;
       case 'fee-structures':

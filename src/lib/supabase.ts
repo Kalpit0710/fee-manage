@@ -499,7 +499,7 @@ export const db = {
         t.quarter_id === quarter.id && t.status === 'completed'
       );
 
-      const baseFee = feeStructure?.total_fee || student.class?.quarterly_fee || 0;
+      const baseFee = feeStructure?.total_fee || 0;
       const extraChargesAmount = quarterExtraCharges.reduce((sum, ec) => sum + ec.amount, 0);
       const amountPaid = quarterTransactions.reduce((sum, t) => sum + t.amount_paid, 0);
       
