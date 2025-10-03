@@ -158,6 +158,7 @@ const ClassModal: React.FC<ClassModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     class_name: classItem?.class_name || '',
     quarterly_fee: classItem?.quarterly_fee || 0,
