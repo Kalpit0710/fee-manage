@@ -7,6 +7,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error?: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +23,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState(Date.now());
 
   const handleUserSession = async (authUser: any) => {
     try {
@@ -130,6 +132,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription?.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const TIMEOUT_DURATION = 30 * 60 * 1000;
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      if (now - lastActivity > TIMEOUT_DURATION) {
+        signOut();
+      }
+    };
+
+    const updateActivity = () => {
+      setLastActivity(Date.now());
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity);
+    });
+
+    const interval = setInterval(checkInactivity, 60000);
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, updateActivity);
+      });
+      clearInterval(interval);
+    };
+  }, [user, lastActivity]);
+
   const signIn = async (email: string, password: string) => {
     const { error } = await auth.signIn(email, password);
     return { error };
@@ -140,11 +173,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await auth.resetPassword(email);
+    return { error };
+  };
+
   const value = {
     user,
     loading,
     signIn,
     signOut,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

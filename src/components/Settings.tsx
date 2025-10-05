@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Save, User, Shield, Bell, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { AuditLogViewer } from './AuditLogViewer';
 
 interface SchoolSettings {
   school_name: string;
@@ -74,7 +75,7 @@ export default function Settings() {
   const tabs = [
     { id: 'school', label: 'School Settings', icon: SettingsIcon },
     { id: 'profile', label: 'User Profile', icon: User },
-    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'security', label: 'Security & Audit', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'database', label: 'Database', icon: Database }
   ];
@@ -323,9 +324,17 @@ export default function Settings() {
 
           {activeTab === 'security' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-medium text-gray-900">Security Settings</h3>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <p className="text-gray-600">Security settings will be implemented in future updates.</p>
+              <AuditLogViewer />
+
+              <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-900 mb-2">Security Features Active</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>✓ Password reset functionality enabled</li>
+                  <li>✓ Auto-logout after 30 minutes of inactivity</li>
+                  <li>✓ Role-based access control enforced</li>
+                  <li>✓ Comprehensive audit trail tracking all changes</li>
+                  <li>✓ Row-level security on all database tables</li>
+                </ul>
               </div>
             </div>
           )}
@@ -342,8 +351,43 @@ export default function Settings() {
           {activeTab === 'database' && (
             <div className="space-y-6">
               <h3 className="text-lg font-medium text-gray-900">Database Management</h3>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <p className="text-gray-600">Database management tools will be implemented in future updates.</p>
+
+              <div className="bg-white border rounded-lg p-6 space-y-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Database Backup</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Supabase provides automated daily backups. You can access and restore backups from your Supabase Dashboard.
+                  </p>
+                  <a
+                    href="https://supabase.com/dashboard/project/_/settings/database"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  >
+                    <Database className="w-4 h-4 mr-2" />
+                    Open Database Settings
+                  </a>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Backup Strategy</h4>
+                  <div className="text-sm text-gray-600 space-y-2">
+                    <p><strong>Automated Backups:</strong> Supabase performs daily automated backups</p>
+                    <p><strong>Point-in-Time Recovery:</strong> Available for paid plans (up to 7 days)</p>
+                    <p><strong>Manual Backups:</strong> Use the "Download Backup" feature in Supabase Dashboard</p>
+                    <p><strong>Data Export:</strong> Use the CSV export feature in each module for local backups</p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Data Retention Policy</h4>
+                  <div className="text-sm text-gray-600 space-y-2">
+                    <p><strong>Active Students:</strong> Retained indefinitely</p>
+                    <p><strong>Transaction Records:</strong> Retained for 7 years (as per accounting standards)</p>
+                    <p><strong>Audit Logs:</strong> Retained for 1 year</p>
+                    <p><strong>Inactive Students:</strong> Marked inactive but data retained</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

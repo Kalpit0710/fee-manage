@@ -33,6 +33,13 @@ export const auth = {
     return supabase.auth.onAuthStateChange((event, session) => {
       callback(event, session?.user || null);
     });
+  },
+
+  resetPassword: async (email: string) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/admin/dashboard`,
+    });
+    return { data, error };
   }
 };
 
