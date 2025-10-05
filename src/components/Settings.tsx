@@ -3,6 +3,7 @@ import { Settings as SettingsIcon, Save, User, Shield, Bell, Database } from 'lu
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AuditLogViewer } from './AuditLogViewer';
+import { TwoFactorSetup } from './TwoFactorSetup';
 
 interface SchoolSettings {
   school_name: string;
@@ -20,6 +21,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('school');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [show2FASetup, setShow2FASetup] = useState(false);
   
   const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>({
     school_name: 'J.R. Preparatory School',
@@ -324,6 +326,20 @@ export default function Settings() {
 
           {activeTab === 'security' && (
             <div className="space-y-6">
+              <div className="bg-white border rounded-lg p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Two-Factor Authentication</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Add an extra layer of security to your account. Recommended for admin accounts.
+                </p>
+                <button
+                  onClick={() => setShow2FASetup(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Manage 2FA</span>
+                </button>
+              </div>
+
               <AuditLogViewer />
 
               <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -331,7 +347,9 @@ export default function Settings() {
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>✓ Password reset functionality enabled</li>
                   <li>✓ Auto-logout after 30 minutes of inactivity</li>
+                  <li>✓ Session timer displayed in header</li>
                   <li>✓ Role-based access control enforced</li>
+                  <li>✓ Two-factor authentication available</li>
                   <li>✓ Comprehensive audit trail tracking all changes</li>
                   <li>✓ Row-level security on all database tables</li>
                 </ul>
@@ -393,6 +411,10 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      {show2FASetup && (
+        <TwoFactorSetup onClose={() => setShow2FASetup(false)} />
+      )}
     </div>
   );
 }

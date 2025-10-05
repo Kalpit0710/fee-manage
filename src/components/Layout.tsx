@@ -13,6 +13,7 @@ import {
   Plus,
   AlertTriangle
 } from 'lucide-react';
+import { SessionTimer } from './SessionTimer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,12 +21,12 @@ interface LayoutProps {
   onSectionChange: (section: string) => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ 
-  children, 
-  currentSection, 
-  onSectionChange 
+export const Layout: React.FC<LayoutProps> = ({
+  children,
+  currentSection,
+  onSectionChange
 }) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, sessionTimeRemaining } = useAuth();
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, roles: ['admin', 'cashier'] },
@@ -63,11 +64,13 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             
             <div className="flex items-center space-x-4">
+              <SessionTimer timeRemaining={sessionTimeRemaining} />
+
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                 <p className="text-xs text-gray-600 capitalize">{user?.role}</p>
               </div>
-              
+
               <button
                 onClick={signOut}
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"

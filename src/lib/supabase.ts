@@ -37,7 +37,26 @@ export const auth = {
 
   resetPassword: async (email: string) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/admin/dashboard`,
+      redirectTo: `${window.location.origin}`,
+    });
+    return { data, error };
+  },
+
+  updatePassword: async (newPassword: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    return { data, error };
+  },
+
+  resendVerificationEmail: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      return { error: { message: 'No user email found' } };
+    }
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email: user.email,
     });
     return { data, error };
   }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './components/NotificationSystem';
 import { Layout } from './components/Layout';
@@ -15,6 +15,7 @@ import { Reports } from './components/Reports';
 import { ParentPortal } from './components/ParentPortal';
 import { TransactionManagement } from './components/TransactionManagement';
 import Settings from './components/Settings';
+import { PasswordReset } from './components/PasswordReset';
 
 const AdminSection: React.FC = () => {
   const { section } = useParams<{ section: string }>();
@@ -64,6 +65,14 @@ const AdminSection: React.FC = () => {
 
 const AdminApp: React.FC = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    setIsRecoveryMode(type === 'recovery');
+  }, [location]);
 
   if (loading) {
     return (
@@ -71,6 +80,10 @@ const AdminApp: React.FC = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (isRecoveryMode) {
+    return <PasswordReset />;
   }
 
   if (!user) {

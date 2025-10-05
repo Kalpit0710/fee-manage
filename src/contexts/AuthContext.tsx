@@ -8,6 +8,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: any }>;
+  sessionTimeRemaining: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(30 * 60);
 
   const handleUserSession = async (authUser: any) => {
     try {
@@ -139,13 +141,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const checkInactivity = () => {
       const now = Date.now();
-      if (now - lastActivity > TIMEOUT_DURATION) {
+      const elapsed = now - lastActivity;
+      const remaining = Math.max(0, Math.floor((TIMEOUT_DURATION - elapsed) / 1000));
+
+      setSessionTimeRemaining(remaining);
+
+      if (remaining === 0) {
         signOut();
       }
     };
 
     const updateActivity = () => {
       setLastActivity(Date.now());
+      setSessionTimeRemaining(30 * 60);
     };
 
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
@@ -153,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.addEventListener(event, updateActivity);
     });
 
-    const interval = setInterval(checkInactivity, 60000);
+    const interval = setInterval(checkInactivity, 1000);
 
     return () => {
       events.forEach(event => {
@@ -184,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signOut,
     resetPassword,
+    sessionTimeRemaining,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
