@@ -9,7 +9,8 @@ import {
   DollarSign,
   AlertTriangle,
   CheckCircle,
-  Printer
+  Printer,
+  Mail
 } from 'lucide-react';
 import { Student, Quarter, StudentFeeDetails, PaymentRequest } from '../types';
 import { db, supabase } from '../lib/supabase';
@@ -17,6 +18,9 @@ import { format, isAfter } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from './NotificationSystem';
 import { ReceiptGenerator } from './ReceiptGenerator';
+import { PaymentFailureHandler } from './PaymentFailureHandler';
+import { validatePayment } from '../utils/validation';
+import { ErrorHandler } from '../utils/errorHandler';
 
 export const FeeCollection: React.FC = () => {
   const { user } = useAuth();
@@ -41,6 +45,10 @@ export const FeeCollection: React.FC = () => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+  const [paymentError, setPaymentError] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +167,22 @@ export const FeeCollection: React.FC = () => {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    setValidationErrors([]);
+    const validation = validatePayment(paymentData);
+
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors.map(e => e.message));
+      showError('Validation Error', validation.errors[0].message);
+      return;
+    }
+
+    await processPayment();
+  };
+
+  const processPayment = async () => {
     setProcessingPayment(true);
+    setPaymentError(null);
 
     try {
       const transactionData = {
@@ -169,13 +192,15 @@ export const FeeCollection: React.FC = () => {
         status: 'completed'
       };
 
-      const { data: transaction } = await db.createTransaction(transactionData);
+      const { data: transaction, error } = await db.createTransaction(transactionData);
+
+      if (error) throw error;
 
       if (transaction && studentDetails) {
         const quarterData = studentDetails.quarters.find(q => q.quarter.id === selectedQuarter);
 
         if (quarterData) {
-          setReceiptData({
+          const receipt = {
             transaction,
             student: studentDetails.student,
             quarter: quarterData.quarter,
@@ -183,19 +208,25 @@ export const FeeCollection: React.FC = () => {
               baseFee: quarterData.base_fee,
               extraCharges: quarterData.extra_charges_amount,
               lateFee: quarterData.late_fee,
-              concession: studentDetails.student.concession || 0,
+              concession: studentDetails.student.concession_amount || 0,
               total: transaction.amount_paid
             },
             paymentId: transaction.payment_reference
-          });
+          };
 
+          setReceiptData(receipt);
           setShowPaymentModal(false);
           setShowReceipt(true);
+          setRetryCount(0);
 
           showSuccess(
             'Payment Successful',
             `Payment collected successfully! Receipt No: ${transaction.receipt_no}`
           );
+
+          if (studentDetails.student.parent_email) {
+            sendReceiptEmail(receipt);
+          }
 
           const { data: updatedDetails } = await db.getStudentFeeDetails(studentDetails.student.id);
           if (updatedDetails) {
@@ -205,11 +236,59 @@ export const FeeCollection: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Payment error:', error);
-      showError('Payment Failed', 'Failed to process payment. Please try again.');
+      const appError = ErrorHandler.handleError(error, 'Payment Processing');
+      setPaymentError(error);
+      setRetryCount(prev => prev + 1);
+      showError(appError.title, appError.message);
     } finally {
       setProcessingPayment(false);
     }
+  };
+
+  const sendReceiptEmail = async (receipt: any) => {
+    if (!receipt.student.parent_email) return;
+
+    setSendingEmail(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-receipt-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: receipt.student.parent_email,
+            studentName: receipt.student.name,
+            receiptNo: receipt.transaction.receipt_no,
+            amount: receipt.transaction.amount_paid,
+            paymentDate: receipt.transaction.payment_date,
+            quarter: receipt.quarter.quarter_name,
+            paymentMode: receipt.transaction.payment_mode,
+            breakdown: receipt.breakdown
+          })
+        }
+      );
+
+      if (response.ok) {
+        showSuccess('Email Sent', 'Receipt has been sent to parent email');
+      }
+    } catch (error) {
+      console.error('Email sending error:', error);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleRetryPayment = () => {
+    processPayment();
+  };
+
+  const handleCancelPayment = () => {
+    setPaymentError(null);
+    setRetryCount(0);
+    setShowPaymentModal(false);
   };
 
   const getQuarterStatus = (quarter: any) => {
@@ -411,13 +490,25 @@ export const FeeCollection: React.FC = () => {
       )}
 
       {/* Payment Modal */}
-      {showPaymentModal && (
+      {showPaymentModal && !paymentError && (
         <PaymentModal
           paymentData={paymentData}
           setPaymentData={setPaymentData}
           onSubmit={handlePaymentSubmit}
           onClose={() => setShowPaymentModal(false)}
           processing={processingPayment}
+          validationErrors={validationErrors}
+        />
+      )}
+
+      {/* Payment Failure Handler */}
+      {paymentError && (
+        <PaymentFailureHandler
+          error={paymentError}
+          onRetry={handleRetryPayment}
+          onCancel={handleCancelPayment}
+          retryCount={retryCount}
+          maxRetries={3}
         />
       )}
 
@@ -439,6 +530,7 @@ interface PaymentModalProps {
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
   processing: boolean;
+  validationErrors?: string[];
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -446,7 +538,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   setPaymentData,
   onSubmit,
   onClose,
-  processing
+  processing,
+  validationErrors = []
 }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -454,8 +547,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         <div className="p-6 border-b">
           <h3 className="text-lg font-semibold text-gray-900">Collect Payment</h3>
         </div>
-        
+
         <form onSubmit={onSubmit} className="p-6 space-y-4">
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <ul className="text-sm text-red-800 space-y-1">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Amount to Collect (₹)
