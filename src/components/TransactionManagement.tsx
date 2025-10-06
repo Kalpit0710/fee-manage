@@ -31,7 +31,10 @@ export const TransactionManagement: React.FC = () => {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 50;
+
   const [filters, setFilters] = useState<TransactionFilters>({
     dateFrom: '',
     dateTo: '',
@@ -51,37 +54,41 @@ export const TransactionManagement: React.FC = () => {
     if (Object.values(filters).some(value => value !== '')) {
       loadTransactions();
     }
-  }, [filters]);
+  }, [filters, currentPage]);
 
   const loadData = async () => {
     setLoading(true);
-    
+
     const [transactionsResult, studentsResult, quartersResult] = await Promise.all([
-      db.getTransactions(),
+      db.getTransactions({ page: currentPage, pageSize }),
       db.getStudents(),
       db.getQuarters()
     ]);
-    
+
     if (transactionsResult.data) setTransactions(transactionsResult.data);
+    if (transactionsResult.count) setTotalCount(transactionsResult.count);
     if (studentsResult.data) setStudents(studentsResult.data);
     if (quartersResult.data) setQuarters(quartersResult.data);
-    
+
     setLoading(false);
   };
 
   const loadTransactions = async () => {
     setLoading(true);
-    
-    const filterParams: any = {};
+
+    const filterParams: any = {
+      page: currentPage,
+      pageSize
+    };
     if (filters.dateFrom) filterParams.date_from = filters.dateFrom;
     if (filters.dateTo) filterParams.date_to = filters.dateTo;
     if (filters.studentId) filterParams.student_id = filters.studentId;
     if (filters.quarterId) filterParams.quarter_id = filters.quarterId;
-    
-    const { data } = await db.getTransactions(filterParams);
-    
+
+    const { data, count } = await db.getTransactions(filterParams);
+
     let filteredData = data || [];
-    
+
     // Apply additional filters
     if (filters.paymentMode) {
       filteredData = filteredData.filter(t => t.payment_mode === filters.paymentMode);
@@ -95,8 +102,9 @@ export const TransactionManagement: React.FC = () => {
     if (filters.maxAmount) {
       filteredData = filteredData.filter(t => t.amount_paid <= Number(filters.maxAmount));
     }
-    
+
     setTransactions(filteredData);
+    if (count) setTotalCount(count);
     setLoading(false);
   };
 
@@ -525,6 +533,34 @@ export const TransactionManagement: React.FC = () => {
           onClose={() => setShowReceipt(false)}
           isParentView={false}
         />
+      )}
+
+      {/* Pagination */}
+      {!loading && transactions.length > 0 && (
+        <div className="flex items-center justify-between bg-white px-6 py-4 border rounded-lg">
+          <div className="text-sm text-gray-700">
+            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} transactions
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 text-sm text-gray-700">
+              Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+            </span>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+              className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

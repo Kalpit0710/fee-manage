@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Users, 
-  DollarSign, 
-  AlertTriangle, 
+import {
+  Users,
+  DollarSign,
+  AlertTriangle,
   TrendingUp,
   CreditCard,
   Smartphone,
@@ -12,6 +12,8 @@ import {
 import { DashboardStats } from '../types';
 import { db } from '../lib/supabase';
 import { format } from 'date-fns';
+import { cache } from '../utils/cache';
+import { CardLoading, InlineLoader } from './LoadingStates';
 
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -22,13 +24,24 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const loadDashboardData = async () => {
+    const cacheKey = 'dashboard_stats';
+    const cachedData = cache.get<DashboardStats>(cacheKey);
+
+    if (cachedData) {
+      setStats(cachedData);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data } = await db.getDashboardStats();
       setStats(data);
+      if (data) {
+        cache.set(cacheKey, data, 2 * 60 * 1000);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Set default stats to prevent crashes
       setStats({
         total_students: 0,
         total_collected: 0,
@@ -46,8 +59,11 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <CardLoading count={4} className="grid-cols-1 md:grid-cols-2 lg:grid-cols-4" />
+        </div>
+        <InlineLoader message="Loading dashboard data..." />
       </div>
     );
   }

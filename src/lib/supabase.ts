@@ -365,12 +365,14 @@ export const db = {
     return { data, error };
   },
   // Transactions
-  getTransactions: async (filters?: { 
-    student_id?: string; 
-    quarter_id?: string; 
+  getTransactions: async (filters?: {
+    student_id?: string;
+    quarter_id?: string;
     created_by?: string;
     date_from?: string;
     date_to?: string;
+    page?: number;
+    pageSize?: number;
   }) => {
     let query = supabase
       .from('transactions')
@@ -378,7 +380,7 @@ export const db = {
         *,
         student:students(*),
         quarter:quarters(*)
-      `)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (filters?.student_id) {
@@ -401,8 +403,14 @@ export const db = {
       query = query.lte('payment_date', filters.date_to);
     }
 
-    const { data, error } = await query;
-    return { data, error };
+    if (filters?.page && filters?.pageSize) {
+      const from = (filters.page - 1) * filters.pageSize;
+      const to = from + filters.pageSize - 1;
+      query = query.range(from, to);
+    }
+
+    const { data, error, count } = await query;
+    return { data, error, count };
   },
 
   getTransaction: async (id: string) => {
