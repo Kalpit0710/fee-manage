@@ -13,7 +13,9 @@ import { ExtraChargeManagement } from './components/ExtraChargeManagement';
 import { LateFeeConfiguration } from './components/LateFeeConfiguration';
 import { Reports } from './components/Reports';
 import { ParentPortal } from './components/ParentPortal';
+import { EnhancedParentPortal } from './components/EnhancedParentPortal';
 import { TransactionManagement } from './components/TransactionManagement';
+import { BulkMessaging } from './components/BulkMessaging';
 import Settings from './components/Settings';
 import { PasswordReset } from './components/PasswordReset';
 
@@ -46,6 +48,8 @@ const AdminSection: React.FC = () => {
         return <TransactionManagement />;
       case 'reports':
         return <Reports />;
+      case 'bulk-messaging':
+        return <BulkMessaging />;
       case 'settings':
         return <Settings />;
       default:
@@ -99,6 +103,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<ParentPortal />} />
+          <Route path="/parent-portal" element={<AuthProvider><EnhancedParentPortal /></AuthProvider>} />
           <Route path="/admin" element={<AuthProvider><Navigate to="/admin/dashboard" replace /></AuthProvider>} />
           <Route path="/admin/:section" element={<AuthProvider><AdminApp /></AuthProvider>} />
           <Route path="*" element={<Navigate to="/" replace />} />

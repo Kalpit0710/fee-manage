@@ -11,9 +11,11 @@ import {
   DollarSign,
   Calculator,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  Send
 } from 'lucide-react';
 import { SessionTimer } from './SessionTimer';
+import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -38,6 +40,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'fee-collection', label: 'Fee Collection', icon: Calculator, roles: ['admin', 'cashier'] },
     { id: 'transactions', label: 'Transactions', icon: CreditCard, roles: ['admin', 'cashier'] },
     { id: 'reports', label: 'Reports', icon: Receipt, roles: ['admin', 'cashier'] },
+    { id: 'bulk-messaging', label: 'Bulk Messaging', icon: Send, roles: ['admin'] },
     { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin'] },
   ];
 
@@ -65,6 +68,8 @@ export const Layout: React.FC<LayoutProps> = ({
             
             <div className="flex items-center space-x-4">
               <SessionTimer timeRemaining={sessionTimeRemaining} />
+
+              <NotificationBell />
 
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{user?.name}</p>
