@@ -11,7 +11,8 @@ import {
   BarChart3,
   TrendingUp,
   Eye,
-  Receipt
+  Receipt,
+  CheckCircle
 } from 'lucide-react';
 import { Transaction, Student, Class, Quarter } from '../types';
 import { db } from '../lib/supabase';
@@ -67,6 +68,8 @@ export const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'defaulters'>(
     (searchParams.get('tab') as 'overview' | 'transactions' | 'defaulters') || 'overview'
   );
+  const [defaulters, setDefaulters] = useState<any[]>([]);
+  const [loadingDefaulters, setLoadingDefaulters] = useState(false);
   
   const [filters, setFilters] = useState<ReportFilters>({
     dateFrom: searchParams.get('dateFrom') || format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'),
@@ -91,6 +94,29 @@ export const Reports: React.FC = () => {
   const handleTabChange = (tab: 'overview' | 'transactions' | 'defaulters') => {
     setActiveTab(tab);
     updateURL({ tab });
+
+    if (tab === 'defaulters' && defaulters.length === 0) {
+      loadDefaulters();
+    }
+  };
+
+  const loadDefaulters = async () => {
+    setLoadingDefaulters(true);
+    try {
+      const { data, error } = await db.getDefaultersList();
+
+      if (error) {
+        showError('Error loading defaulters', 'Failed to load defaulters list');
+        return;
+      }
+
+      setDefaulters(data || []);
+    } catch (error) {
+      console.error('Error loading defaulters:', error);
+      showError('Error', 'Failed to load defaulters list');
+    } finally {
+      setLoadingDefaulters(false);
+    }
   };
 
   const handleFilterChange = (filterUpdates: Partial<ReportFilters>) => {
@@ -566,12 +592,112 @@ export const Reports: React.FC = () => {
               )}
 
               {activeTab === 'defaulters' && (
-                <div className="text-center py-12">
-                  <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Defaulters Report</h3>
-                  <p className="text-gray-500">
-                    This feature requires complex calculations and will be implemented in the next phase.
-                  </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Defaulters List ({defaulters.length})
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Students with overdue fee payments
+                      </p>
+                    </div>
+                    <button
+                      onClick={loadDefaulters}
+                      disabled={loadingDefaulters}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {loadingDefaulters ? 'Loading...' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  {loadingDefaulters ? (
+                    <div className="text-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-gray-600 mt-4">Loading defaulters...</p>
+                    </div>
+                  ) : defaulters.length === 0 ? (
+                    <div className="text-center py-12 bg-green-50 rounded-lg">
+                      <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Defaulters!</h3>
+                      <p className="text-gray-600">
+                        All students have paid their fees on time.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-left text-sm font-medium text-gray-600 border-b">
+                            <th className="pb-3">Adm No</th>
+                            <th className="pb-3">Student Name</th>
+                            <th className="pb-3">Father Name</th>
+                            <th className="pb-3">Class</th>
+                            <th className="pb-3">Contact</th>
+                            <th className="pb-3">Days Overdue</th>
+                            <th className="pb-3">Overdue Quarters</th>
+                            <th className="pb-3">Total Pending</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {defaulters.map((defaulter) => (
+                            <tr key={defaulter.id} className="text-sm hover:bg-gray-50">
+                              <td className="py-3 font-mono text-xs">
+                                {defaulter.admission_no}
+                              </td>
+                              <td className="py-3 font-medium">
+                                {defaulter.name}
+                              </td>
+                              <td className="py-3">
+                                {defaulter.father_name}
+                              </td>
+                              <td className="py-3">
+                                {defaulter.class?.class_name}
+                                {defaulter.section && ` - ${defaulter.section}`}
+                              </td>
+                              <td className="py-3">
+                                {defaulter.contact}
+                              </td>
+                              <td className="py-3">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  defaulter.daysOverdue > 30
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-orange-100 text-orange-800'
+                                }`}>
+                                  {defaulter.daysOverdue} days
+                                </span>
+                              </td>
+                              <td className="py-3 text-center">
+                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-800 font-semibold">
+                                  {defaulter.overdueQuarters}
+                                </span>
+                              </td>
+                              <td className="py-3 font-semibold text-red-600">
+                                ₹{defaulter.totalPending.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {defaulters.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-blue-900 mb-1">Follow-up Actions</h4>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            <li>• Send payment reminder notices to parents</li>
+                            <li>• Contact parents via phone for overdue payments</li>
+                            <li>• Apply late fees as per school policy</li>
+                            <li>• Schedule parent meetings for long-overdue accounts</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>

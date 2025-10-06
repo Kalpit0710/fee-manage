@@ -603,6 +603,66 @@ export const db = {
     return { data: stats, error: null };
   },
 
+  getDefaultersList: async () => {
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select(`
+        id,
+        admission_no,
+        name,
+        father_name,
+        contact,
+        email,
+        class:classes(id, class_name),
+        section
+      `)
+      .eq('is_active', true);
+
+    if (studentsError || !students) return { data: [], error: studentsError };
+
+    const { data: quarters } = await supabase
+      .from('quarters')
+      .select('*')
+      .eq('is_active', true)
+      .order('start_date');
+
+    if (!quarters) return { data: [], error: null };
+
+    const defaulters = [];
+
+    for (const student of students) {
+      const feeDetails = await db.getStudentFeeDetails(student.id);
+
+      if (!feeDetails.data) continue;
+
+      const overdueQuarters = feeDetails.data.quarters.filter((q: any) => {
+        return q.balance > 0 && q.is_overdue;
+      });
+
+      if (overdueQuarters.length > 0) {
+        const totalPending = overdueQuarters.reduce((sum: number, q: any) => sum + q.balance, 0);
+        const oldestOverdue = overdueQuarters.sort((a: any, b: any) =>
+          new Date(a.quarter.due_date).getTime() - new Date(b.quarter.due_date).getTime()
+        )[0];
+
+        const daysOverdue = Math.floor(
+          (new Date().getTime() - new Date(oldestOverdue.quarter.due_date).getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        defaulters.push({
+          ...student,
+          totalPending,
+          overdueQuarters: overdueQuarters.length,
+          oldestDueDate: oldestOverdue.quarter.due_date,
+          daysOverdue,
+          quarters: overdueQuarters
+        });
+      }
+    }
+
+    return { data: defaulters.sort((a, b) => b.daysOverdue - a.daysOverdue), error: null };
+  },
+
   // Audit Logs
   getAuditLogs: async (filters?: {
     user_id?: string;
